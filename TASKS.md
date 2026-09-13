@@ -17,24 +17,25 @@ against. Read it before picking up a task.
 ## Wave 1 -- start immediately, fully parallel, no dependencies
 | Track | Owns | Task |
 |---|---|---|
-| **auth** | `backend/app/routers/auth.py` | Add `get_current_user` dependency (decode JWT, fetch user), protect routes that need a real user instead of the `citizen_id="anonymous"` default param |
-| **citizen-ui** | `frontend/src/pages/citizen/` | Build the submission form (category, description, location picker, address) against `POST /complaints` -- the endpoint already works, returns real data |
-| **admin-ui** | `frontend/src/pages/admin/` | Build the queue table + status-change buttons against `GET /complaints` and `PATCH /complaints/{id}/status` -- both already work |
+| ~~**auth**~~ | `backend/app/routers/auth.py`, `backend/app/core/deps.py` | **Done.** `get_current_user`/`require_role` dependency added; `citizen_id=/author_id=` query-param defaults removed in favor of the authenticated user; admin self-registration closed off (`/auth/bootstrap-admin` is the only way to create an admin); a third role (`officer`, department-scoped) was added, ported from ResolveAI's department-officer accounts. |
+| ~~**citizen-ui**~~ | `frontend/src/pages/citizen/` | **Done.** Login/register/dashboard/submit/my-complaints, all wired to the live backend. |
+| ~~**admin-ui**~~ | `frontend/src/pages/admin/` | **Done.** Dashboard/all-complaints (assign, reassign, delete)/departments/analytics. An **officer-ui** track was added beyond the original plan (`frontend/src/pages/officer/`) since the auth track ended up with three roles, not two -- also done. |
 | **data-etl** | `scripts/seed_from_311.py` | Fill in the NYC 311 fetch + mapping + bulk insert. Only needs the schema in `backend/app/schemas/complaint.py`, doesn't touch any router |
 | **devops** | `docker-compose.yml`, `.env.example` | Add a `.dockerignore`, tighten healthchecks, prep a Railway/Render deploy config for the demo fallback link |
 
 ## Wave 2 -- depends on Wave 1 (specifically: auth merged)
 | Track | Owns | Depends on |
 |---|---|---|
-| **rbac-hardening** | `backend/app/routers/complaints.py` | `auth` track's `get_current_user` -- swap the `citizen_id`/`author_id` query params for the real authenticated user |
+| ~~**rbac-hardening**~~ | `backend/app/routers/complaints.py` | **Done.** Every complaint route now checks role + ownership (`_can_view`/`_can_manage` in `complaints.py`) instead of trusting query params. |
+| **bonus-ai** | new: `backend/app/services/ai_extract.py` (suggested) | Auto-classify/summarize/extract category+urgency from free-text descriptions -- see case study PDF's "Bonus AI" section. Neither this scaffold nor the ResolveAI reference project had this implemented; it needs to be built from scratch (rule-based keyword matching is a reasonable MVP if there's no LLM budget/time) |
 
 ## Wave 3 -- depends on complaints data existing (seed script run, or a few
 manual complaints submitted through the citizen UI)
 | Track | Owns | Depends on |
 |---|---|---|
-| **priority-engine** | `backend/app/services/priority.py` | Needs real complaints in Mongo to tune weights against -- the formula skeleton already runs, this is about validating/adjusting `W_AGE`/`W_CATEGORY`/`W_CLUSTER` and the category weight table |
-| **analytics** | `backend/app/routers/analytics.py` | Needs complaints data to test aggregations against; add the hotspot/SLA endpoints described in `implementation-plan.md` |
-| **admin-ui-charts** | `frontend/src/pages/admin/` | Needs `analytics` endpoints returning real shapes before wiring up charts |
+| **priority-engine** | `backend/app/services/priority.py` | Needs real complaints in Mongo to tune weights against -- the formula skeleton already runs, this is about validating/adjusting `W_AGE`/`W_CATEGORY`/`W_CLUSTER` and the category weight table. Duplicate detection (`detect_duplicate`) shares the same tuning question for `DUPLICATE_WINDOW_DAYS`. |
+| ~~**analytics**~~ | `backend/app/routers/analytics.py` | **Done.** `/summary`, `/aging`, `/hotspots`, `/sla` all implemented and admin-gated. |
+| ~~**admin-ui-charts**~~ | `frontend/src/pages/admin/` | **Done.** `Analytics.jsx` wires up `by_status`/`by_category`/`by_priority` bar lists, hotspots, and SLA stat cards. |
 
 ## How to avoid blocking each other in practice
 1. Everyone branches off `main`, never off another open feature branch, unless the PR description says "depends on #X".
