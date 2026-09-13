@@ -1,0 +1,12 @@
+# Auto-requests review from the right person/track on each PR.
+# Edit the usernames once the team is assigned to tracks in TASKS.md.
+
+/backend/app/core/            @db-owner
+/backend/app/routers/auth.py  @auth-owner
+/backend/app/routers/complaints.py  @complaints-owner
+/backend/app/routers/analytics.py   @analytics-owner
+/backend/app/services/priority.py   @priority-owner
+/scripts/                     @data-owner
+/frontend/src/pages/citizen/  @citizen-ui-owner
+/frontend/src/pages/admin/    @admin-ui-owner
+/docker-compose.yml           @devops-owner
