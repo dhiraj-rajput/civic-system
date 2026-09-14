@@ -1,15 +1,13 @@
+import { FileText, LayoutDashboard, ListChecks } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client.js";
+import Button from "../../components/ui/Button.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
 import StatCard from "../../components/StatCard.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-/* Ported from ResolveAI's `page_citizen_dash`: 4 stat cards (total / open /
- * in-progress / resolved) computed client-side from the complaint list,
- * plus two big call-to-action buttons. ResolveAI's statuses were
- * open/in_progress/resolved; this project's are New/Assigned/In
- * Progress/Resolved, so "open" below covers New+Assigned. */
 export default function CitizenDashboard() {
   const { user } = useAuth();
   const [complaints, setComplaints] = useState(null);
@@ -29,24 +27,24 @@ export default function CitizenDashboard() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">Welcome, {user?.name}!</h1>
+      <PageHeader icon={LayoutDashboard} title={`Welcome, ${user?.name}`} description="Your civic reports at a glance." />
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-sm text-brick">{error}</p>}
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total" value={total ?? "—"} tone="slate" />
-        <StatCard label="Open" value={open ?? "—"} tone="red" />
-        <StatCard label="In Progress" value={inProgress ?? "—"} tone="amber" />
-        <StatCard label="Resolved" value={resolved ?? "—"} tone="emerald" />
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Total filed" value={total ?? "—"} tone="steel" />
+        <StatCard label="Open" value={open ?? "—"} tone="brick" />
+        <StatCard label="In progress" value={inProgress ?? "—"} tone="signal" />
+        <StatCard label="Resolved" value={resolved ?? "—"} tone="civic" />
       </div>
 
-      <div className="mt-8 flex gap-4">
-        <Link to="/citizen/submit" className="rounded-lg bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-700">
-          📝 Submit New Complaint
-        </Link>
-        <Link to="/citizen/complaints" className="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50">
-          📋 View My Complaints
-        </Link>
+      <div className="mt-8 flex gap-3">
+        <Button as={Link} to="/citizen/submit" variant="accent" size="lg">
+          <FileText size={16} strokeWidth={2} /> Submit a complaint
+        </Button>
+        <Button as={Link} to="/citizen/complaints" variant="outline" size="lg">
+          <ListChecks size={16} strokeWidth={2} /> View my complaints
+        </Button>
       </div>
     </div>
   );

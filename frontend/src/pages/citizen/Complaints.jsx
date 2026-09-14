@@ -1,14 +1,15 @@
+import { AlertTriangle, ListChecks, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { api } from "../../api/client.js";
+import Button from "../../components/ui/Button.jsx";
+import { Select, TextInput } from "../../components/ui/Field.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
+import Panel from "../../components/ui/Panel.jsx";
 import HistoryTimeline from "../../components/HistoryTimeline.jsx";
 import { PriorityBadge, StatusBadge } from "../../components/Badges.jsx";
 import { STATUSES } from "../../constants.js";
 
-/* Ported from ResolveAI's `page_my_complaints`: status filter, sort control,
- * expandable rows, and a "Track complaint" button that fetches
- * /complaints/{id}/track on demand. Filtering/sorting happens client-side
- * here since /complaints/mine returns the full personal list already. */
 export default function CitizenComplaints() {
   const [complaints, setComplaints] = useState(null);
   const [error, setError] = useState(null);
@@ -71,66 +72,66 @@ export default function CitizenComplaints() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">📋 My Complaints</h1>
+      <PageHeader icon={ListChecks} title="My complaints" />
 
       <div className="mt-4 flex gap-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
           <option>All</option>
           {STATUSES.map((s) => (
             <option key={s}>{s}</option>
           ))}
-        </select>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+        </Select>
+        <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-auto">
           <option value="created_at">Newest first</option>
           <option value="priority_score">Highest priority first</option>
-        </select>
+        </Select>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-      {complaints && visible.length === 0 && <p className="mt-6 text-sm text-slate-400">No complaints found.</p>}
+      {error && <p className="mt-4 text-sm text-brick">{error}</p>}
+      {complaints && visible.length === 0 && <p className="mt-6 text-sm text-ink-soft">No complaints found.</p>}
 
       <div className="mt-4 space-y-3">
         {visible.map((c) => (
-          <div key={c.id} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <Panel key={c.id} accent={c.status === "New" ? "brick" : c.status === "Resolved" ? "civic" : "signal"}>
             <button onClick={() => toggleExpand(c)} className="flex w-full items-center justify-between px-4 py-3 text-left">
               <div>
-                <p className="font-medium text-slate-900">{c.complaint_id} · {c.category}</p>
-                <p className="text-xs text-slate-400">{new Date(c.created_at).toLocaleDateString()}</p>
+                <p className="font-ref text-xs text-ink-soft">{c.complaint_id}</p>
+                <p className="mt-0.5 font-medium text-ink">{c.category}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <PriorityBadge priority={c.priority_label} />
                 <StatusBadge status={c.status} />
               </div>
             </button>
             {expanded === c.id && (
-              <div className="border-t border-slate-100 px-4 py-3">
-                <p className="text-sm text-slate-700">{c.description}</p>
+              <div className="border-t border-line px-4 py-4">
+                <p className="text-sm text-ink">{c.description}</p>
                 {c.is_duplicate && (
-                  <p className="mt-2 text-xs text-amber-600">⚠️ Flagged as a likely duplicate</p>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-signal-dark">
+                    <AlertTriangle size={13} strokeWidth={2} /> Flagged as a likely duplicate
+                  </p>
                 )}
-                {c.assigned_to && <p className="mt-2 text-xs text-slate-500">Assigned to: {c.assigned_to}</p>}
+                {c.assigned_to && <p className="mt-2 text-xs text-ink-soft">Assigned to: {c.assigned_to}</p>}
 
-                <h4 className="mt-4 text-sm font-semibold text-slate-700">History</h4>
-                {track ? <HistoryTimeline history={track.history} /> : <p className="text-sm text-slate-400">Loading…</p>}
+                <h4 className="mt-4 text-sm font-medium text-ink">History</h4>
+                <div className="mt-2">
+                  {track ? <HistoryTimeline history={track.history} /> : <p className="text-sm text-ink-soft">Loading…</p>}
+                </div>
 
                 <div className="mt-4 flex gap-2">
-                  <input
+                  <TextInput
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Add a comment…"
-                    className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                    className="mt-0 flex-1"
                   />
-                  <button
-                    onClick={() => submitComment(c.id)}
-                    disabled={commentBusy}
-                    className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-                  >
-                    Send
-                  </button>
+                  <Button variant="primary" size="sm" onClick={() => submitComment(c.id)} disabled={commentBusy}>
+                    <Send size={13} strokeWidth={2} /> Send
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
+          </Panel>
         ))}
       </div>
     </div>

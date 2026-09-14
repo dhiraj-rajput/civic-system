@@ -9,7 +9,9 @@ FastAPI + Motor (async MongoDB) backend, React + Vite frontend, Docker Compose.
 Backend deps managed with [uv](https://docs.astral.sh/uv/) (`pyproject.toml` +
 `uv.lock`) on an Alpine image; frontend also on Alpine. No pip, no `requirements.txt`.
 
-## Quick start
+## How to run
+
+### Option A: Docker Compose (recommended)
 ```bash
 cp .env.example .env
 cp frontend/.env.example frontend/.env
@@ -18,6 +20,60 @@ docker compose up --build
 - API docs: http://localhost:8000/docs
 - Frontend: http://localhost:5173
 - Health check: http://localhost:8000/health
+
+First time only: since `bun.lock` was generated before `@tailwindcss/postcss` was added to `frontend/package.json`, the frontend container needs it refreshed once -- either let `docker compose up --build` regenerate it automatically (bun updates the lock on install when it's out of sync with `package.json`), or run `cd frontend && bun install` yourself first.
+
+### Option B: run backend and frontend manually (no Docker)
+You'll need a MongoDB instance reachable at the URI in `backend/.env` (`mongo_uri`, defaults to `mongodb://localhost:27017`) -- either install MongoDB locally or run just the `mongo` service from `docker-compose.yml` (`docker compose up mongo`).
+
+```bash
+# backend
+cd backend
+python -m venv .venv && source .venv/bin/activate   # or your preferred env tool
+pip install -r requirements.txt
+cp ../.env.example .env   # adjust mongo_uri if not using the default
+uvicorn app.main:app --reload --port 8000
+```
+```bash
+# frontend, in a second terminal
+cd frontend
+cp .env.example .env
+npm install   # or: bun install
+npm run dev   # or: bun run dev
+```
+
+## First-time setup: create the admin account
+There is no seeded admin. The very first thing to do against a fresh database is create one -- from the frontend, visit http://localhost:5173/bootstrap-admin, or via the API directly:
+```bash
+curl -X POST http://localhost:8000/auth/bootstrap-admin \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Admin", "email": "admin@city.gov", "password": "change-me-immediately"}'
+```
+This only ever succeeds once -- see the Auth & RBAC section below.
+
+## Seed sample data
+`scripts/seed_from_311.py` pulls from NYC's real 311 Service Request dataset (the one named in the case study PDF) and maps each record onto this project's schema using rule-based keyword matching (see `CATEGORY_KEYWORDS` in the script) -- the same "real logic, clearly labeled as rule-based, not a fake AI claim" approach as the backend's duplicate detection and auto-assignment.
+
+```bash
+cd backend && pip install -r requirements.txt   # needs `requests`, already listed
+cd ..
+python scripts/seed_from_311.py --limit 100          # live call to NYC Open Data
+python scripts/seed_from_311.py --limit 500 --days 7 # only complaints from the last week
+python scripts/seed_from_311.py --dry-run --limit 20 # fetch + map, don't write anything
+```
+No internet access, or want deterministic data for a demo/CI? Use the bundled fixture instead of the live API:
+```bash
+python scripts/seed_from_311.py --sample-file scripts/sample_311.json
+```
+The script reads Mongo connection info from `backend/.env` (via the backend's own `Settings` class), creates the 5 default departments if they don't already exist, creates one clearly-labeled `nyc311-import@seed.local` system account to own the imported complaints (NYC's dataset has no user accounts, so this avoids inventing fake citizens), and runs every complaint through the real priority-scoring and duplicate-detection logic -- not a separate copy of it.
+
+## Verify auth/RBAC across all three roles
+`scripts/verify_multi_user.py` exercises the full flow over real HTTP against a running backend: bootstraps an admin, registers a citizen and an officer, logs in as each, and walks through submit -> blocked-until-assigned -> auto-assign -> officer resolves -> citizen sees the audit trail -> admin-only analytics -- printing PASS/FAIL per step.
+```bash
+# with the backend already running (Docker Compose or manual, from above)
+python scripts/verify_multi_user.py --base-url http://localhost:8000
+```
+Safe to re-run -- emails are timestamped so accounts don't collide. If an admin already exists (i.e. this isn't the first run), it'll prompt for existing admin credentials to continue the admin-only checks, or you can just hit enter to skip those and still verify the citizen/officer flow.
 
 ## What's already working
 ### Auth & RBAC
@@ -51,14 +107,16 @@ docker compose up --build
 - `GET /analytics/sla` -- SLA compliance %, average resolution time, complaints currently breaching SLA (answers "SLA performance")
 
 ### Infra
-- One passing backend test (`backend/tests/test_health.py`); a broader RBAC/flow smoke test was run manually against an in-memory Mongo during development (not checked in -- worth adding as `tests/test_flow.py` if you want it in CI)
+- Two backend test files: `backend/tests/test_health.py` (1 test) and `backend/tests/test_flow.py` (3 tests -- the full RBAC/assignment/history flow against an in-memory Mongo via `mongomock-motor`). Run with `cd backend && pytest`.
 - 2dsphere geo index, compound query index, and `assigned_to`/`citizen_id` indexes created automatically on startup
 - `bcrypt==4.0.1` pinned in `requirements.txt` -- newer bcrypt releases break `passlib`'s bundled backend detection
+- `scripts/seed_from_311.py` + `scripts/sample_311.json` -- NYC 311 data import (see "Seed sample data" above)
+- `scripts/verify_multi_user.py` -- end-to-end auth/RBAC verification over real HTTP (see "Verify auth/RBAC" above)
 
 Assignment, RBAC, departments, audit history, and the richer analytics shape were adapted from a reference project (ResolveAI) that modeled multi-role auth, department assignment, and an audit-trail `/track` endpoint -- reimplemented here against this project's own schema with real rule-based logic (category auto-routing, duplicate detection), since that reference project's own AI/ML modules were unimplemented placeholders. Not ported: ResolveAI's separate department/admin account-management endpoints (password reset, admin replace, user deletion) -- out of scope for this case study.
 
 ## What's a stub, to be built by the team
-See `TASKS.md` for the full breakdown. Short version: priority-weight tuning, the NYC 311 seed script, and the bonus AI (auto-classify/summarize/extract from free-text complaints) are still `TODO`. The citizen submission form, officer queue, and admin dashboard/complaints/departments/analytics UI are now built (`frontend/src/pages/`) -- see the Frontend section below.
+See `TASKS.md` for the full breakdown. Short version: priority-weight tuning and the bonus AI (auto-classify/summarize/extract from free-text complaints) are still `TODO`. The citizen submission form, officer queue, admin dashboard/complaints/departments/analytics UI, and the NYC 311 seed script are now built -- see "How to run" / "Seed sample data" above and the Frontend section below.
 
 ## Frontend
 React + Vite + Tailwind v4 (previously listed as a dependency but never wired up -- `postcss.config.js` and `src/index.css` didn't exist; both added). Full auth flow (register/login/bootstrap-admin) and role-scoped pages for citizen / officer / admin, all built against the backend endpoints above.

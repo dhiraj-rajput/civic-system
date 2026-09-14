@@ -1,9 +1,55 @@
 @import "tailwindcss";
 
+/*
+ * Design language: "municipal case-file."
+ * A complaint is a filed case with a reference number, not a social post --
+ * so the visual system borrows from official forms and street signage
+ * rather than the default rounded-card SaaS kit: flat panels with a
+ * left accent rule instead of uniform drop-shadows, small radii, a
+ * structural top bar, and monospace for reference numbers/timestamps
+ * (they're identifiers, not prose). One warm accent (signal amber, the
+ * hazard-marking color of public works) carries all emphasis; steel-blue
+ * carries structure/navigation; brick and civic-green are reserved for
+ * status meaning (open/resolved), not decoration.
+ */
+@theme {
+  --color-ink: #101820;
+  --color-ink-soft: #46525c;
+  --color-paper: #eff1ec;
+  --color-surface: #ffffff;
+  --color-line: #d7dad3;
+
+  --color-steel: #2c4a63;
+  --color-steel-dark: #1c3245;
+
+  --color-signal: #e0891e;
+  --color-signal-dark: #b56c14;
+
+  --color-brick: #b3401c;
+  --color-civic: #3f7a52;
+
+  --font-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-ref: "IBM Plex Mono", ui-monospace, monospace;
+}
+
 :root {
   color-scheme: light;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+
+/* Visible keyboard focus everywhere, not just on hover -- accessibility
+ * floor from the design skill, easy to lose when hand-styling every
+ * interactive element individually. */
+a, button, input, select, textarea {
+  outline-color: var(--color-signal);
 }

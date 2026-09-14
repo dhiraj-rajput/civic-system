@@ -1,13 +1,12 @@
+import { BarChart3, Building2, ListChecks, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client.js";
+import Panel from "../../components/ui/Panel.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
 import StatCard from "../../components/StatCard.jsx";
 
-/* Ported from ResolveAI's `page_admin_dash` -- ResolveAI's own admin
- * dashboard was actually a stub ("Admin dashboard statistics are currently
- * unavailable") with only nav buttons. This version wires it to the real
- * GET /analytics/summary this project actually implements. */
 export default function AdminDashboard() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
@@ -16,29 +15,34 @@ export default function AdminDashboard() {
     api.get("/analytics/summary").then(setSummary).catch((e) => setError(e.detail || "Could not load analytics"));
   }, []);
 
+  const links = [
+    { to: "/admin/complaints", label: "All complaints", icon: ListChecks, tone: "steel", iconClass: "text-steel" },
+    { to: "/admin/departments", label: "Departments", icon: Building2, tone: "signal", iconClass: "text-signal" },
+    { to: "/admin/analytics", label: "Analytics", icon: BarChart3, tone: "civic", iconClass: "text-civic" },
+  ];
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">🛡️ Admin Dashboard</h1>
+      <PageHeader icon={ShieldCheck} title="Admin dashboard" />
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-sm text-brick">{error}</p>}
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total Complaints" value={summary?.total_complaints ?? "—"} tone="slate" />
-        <StatCard label="Unresolved" value={summary?.unresolved_count ?? "—"} tone="red" />
-        <StatCard label="Unassigned" value={summary?.unassigned_count ?? "—"} tone="amber" />
-        <StatCard label="Likely Duplicates" value={summary?.duplicate_count ?? "—"} tone="blue" />
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Total complaints" value={summary?.total_complaints ?? "—"} tone="steel" />
+        <StatCard label="Unresolved" value={summary?.unresolved_count ?? "—"} tone="brick" />
+        <StatCard label="Unassigned" value={summary?.unassigned_count ?? "—"} tone="signal" />
+        <StatCard label="Likely duplicates" value={summary?.duplicate_count ?? "—"} tone="civic" />
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Link to="/admin/complaints" className="rounded-lg bg-slate-900 px-5 py-4 text-center font-semibold text-white hover:bg-slate-700">
-          📊 All Complaints
-        </Link>
-        <Link to="/admin/departments" className="rounded-lg border border-slate-300 px-5 py-4 text-center font-semibold text-slate-700 hover:bg-slate-50">
-          🏢 Departments
-        </Link>
-        <Link to="/admin/analytics" className="rounded-lg border border-slate-300 px-5 py-4 text-center font-semibold text-slate-700 hover:bg-slate-50">
-          📈 Analytics
-        </Link>
+        {links.map((l) => (
+          <Panel key={l.to} accent={l.tone} className="p-0">
+            <Link to={l.to} className="flex items-center gap-3 px-5 py-4 hover:bg-paper">
+              <l.icon size={18} strokeWidth={2} className={l.iconClass} />
+              <span className="font-medium text-ink">{l.label}</span>
+            </Link>
+          </Panel>
+        ))}
       </div>
     </div>
   );

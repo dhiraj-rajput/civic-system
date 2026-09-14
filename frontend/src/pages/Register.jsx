@@ -1,15 +1,12 @@
+import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import Button from "../components/ui/Button.jsx";
+import { Field, Select, TextInput } from "../components/ui/Field.jsx";
+import Panel from "../components/ui/Panel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-/* Ported from ResolveAI's `page_register` -- field-by-field validation with
- * a single error message, password-confirmation check. ResolveAI's version
- * collected age/guardian-consent/full address for citizens; trimmed here to
- * what this project's schema actually uses. Adds the officer role +
- * department field, which ResolveAI handled via a *separate* department
- * officer creation endpoint -- unified into one form here since this
- * backend's /auth/register accepts both. */
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -58,56 +55,46 @@ export default function Register() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
-      <h1 className="text-2xl font-bold text-slate-900">📝 Register</h1>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Full name</label>
-          <input value={form.name} onChange={update("name")} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Email</label>
-          <input type="email" value={form.email} onChange={update("email")} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Password</label>
-          <input type="password" value={form.password} onChange={update("password")} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Confirm password</label>
-          <input type="password" value={form.confirm} onChange={update("confirm")} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">I am a</label>
-          <select value={form.role} onChange={update("role")} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-            <option value="citizen">Citizen</option>
-            <option value="officer">Department Officer</option>
-          </select>
-        </div>
-        {form.role === "officer" && (
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Department</label>
-            <input
-              value={form.department}
-              onChange={update("department")}
-              placeholder="e.g. Roads & Public Works"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              Must match a department name exactly (see the public departments list) for assignment scoping to work.
-            </p>
-          </div>
-        )}
-        {error && <p className="text-sm text-red-600">❌ {error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 py-2 font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {submitting ? "Registering…" : "Register"}
-        </button>
-      </form>
-      <p className="mt-4 text-center text-sm text-slate-500">
-        Already have an account? <Link to="/login" className="font-medium text-slate-900 underline">Login</Link>
+      <div className="mb-6 flex items-center gap-2">
+        <UserPlus size={18} className="text-signal" strokeWidth={2.25} />
+        <h1 className="font-display text-2xl font-semibold text-ink">Register</h1>
+      </div>
+      <Panel className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Full name">
+            <TextInput value={form.name} onChange={update("name")} />
+          </Field>
+          <Field label="Email">
+            <TextInput type="email" value={form.email} onChange={update("email")} />
+          </Field>
+          <Field label="Password">
+            <TextInput type="password" value={form.password} onChange={update("password")} />
+          </Field>
+          <Field label="Confirm password">
+            <TextInput type="password" value={form.confirm} onChange={update("confirm")} />
+          </Field>
+          <Field label="I am a">
+            <Select value={form.role} onChange={update("role")}>
+              <option value="citizen">Citizen</option>
+              <option value="officer">Department Officer</option>
+            </Select>
+          </Field>
+          {form.role === "officer" && (
+            <Field
+              label="Department"
+              hint="Must match a department name exactly (see the public departments list) for assignment scoping to work."
+            >
+              <TextInput value={form.department} onChange={update("department")} placeholder="e.g. Roads & Public Works" />
+            </Field>
+          )}
+          {error && <p className="text-sm text-brick">{error}</p>}
+          <Button type="submit" variant="accent" disabled={submitting} className="w-full">
+            {submitting ? "Registering…" : "Register"}
+          </Button>
+        </form>
+      </Panel>
+      <p className="mt-4 text-center text-sm text-ink-soft">
+        Already have an account? <Link to="/login" className="font-medium text-steel underline underline-offset-2">Login</Link>
       </p>
     </div>
   );

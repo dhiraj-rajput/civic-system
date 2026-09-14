@@ -1,63 +1,87 @@
+import { Building2, ShieldCheck, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
-/* Ported from ResolveAI's `page_home` hero + 4 feature cards. Rewritten to
- * describe what this project actually does -- rule-based prioritization and
- * duplicate detection, not ML/AI claims ResolveAI's own README made but
- * never implemented. */
+import Button from "../components/ui/Button.jsx";
+import Panel from "../components/ui/Panel.jsx";
+import { PriorityBadge, StatusBadge } from "../components/Badges.jsx";
 
-const FEATURES = [
-  { icon: "📐", title: "Rule-Based Prioritization", desc: "Age + category + nearby-complaint clustering" },
-  { icon: "🔍", title: "Duplicate Detection", desc: "Flags likely-duplicate reports automatically" },
-  { icon: "📊", title: "Live Dashboards", desc: "Status, hotspots, and SLA tracking for admins" },
-  { icon: "🔐", title: "Role-Based Access", desc: "Citizen · Officer · Admin" },
-];
-
+/* Hero shows the product's actual artifact -- a filed case -- rather than a
+ * generic gradient banner + feature-icon grid. This is the most
+ * characteristic thing in a civic-complaint system's world: a report that
+ * becomes a tracked case with a reference number. */
 export default function Home() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 px-8 py-16 text-center text-white shadow-lg">
-        <h1 className="text-4xl font-bold sm:text-5xl">Smart Civic Complaint Portal</h1>
-        <p className="mt-4 text-lg text-slate-200">
-          From citizen report to municipal resolution — one queue, tracked end to end.
-        </p>
-        <div className="mt-8 flex justify-center gap-4">
-          <Link to="/register" className="rounded-lg bg-white px-6 py-3 font-semibold text-slate-900 hover:bg-slate-100">
-            Report an Issue
-          </Link>
-          <Link to="/login" className="rounded-lg border border-white/40 px-6 py-3 font-semibold hover:bg-white/10">
-            Login
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="rounded-xl bg-white p-4 text-center shadow">
-            <div className="text-2xl">{f.icon}</div>
-            <div className="mt-2 font-semibold text-slate-900">{f.title}</div>
-            <div className="mt-1 text-xs text-slate-500">{f.desc}</div>
+    <div className="mx-auto max-w-6xl px-4 py-14">
+      <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div>
+          <h1 className="font-display max-w-lg text-4xl font-semibold leading-tight text-ink sm:text-5xl">
+            Every civic report, tracked from filing to resolution.
+          </h1>
+          <p className="mt-5 max-w-md text-base leading-relaxed text-ink-soft">
+            Report a pothole, a dead streetlight, a water outage. It gets a case
+            number, a priority, and a department — and you can watch it move.
+          </p>
+          <div className="mt-8 flex gap-3">
+            <Button as={Link} to="/register" variant="accent" size="lg">
+              Report an issue
+            </Button>
+            <Button as={Link} to="/login" variant="outline" size="lg">
+              Login
+            </Button>
           </div>
-        ))}
+          <p className="mt-6 text-xs text-ink-soft">
+            First time running this deployment?{" "}
+            <Link to="/bootstrap-admin" className="text-steel underline underline-offset-2">
+              Create the admin account
+            </Link>
+            .
+          </p>
+        </div>
+
+        <Panel accent="signal" className="shadow-sm">
+          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+            <span className="font-ref text-xs text-ink-soft">CMP-2026-0142</span>
+            <PriorityBadge priority="High" />
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-sm text-ink">
+              Streetlight near Gate 3 has been out for a week — the road gets
+              very dark after 7pm.
+            </p>
+            <div className="mt-4 flex items-center justify-between text-xs text-ink-soft">
+              <span>Electrical Maintenance</span>
+              <StatusBadge status="In Progress" />
+            </div>
+          </div>
+          <div className="space-y-2 border-t border-line bg-paper px-5 py-3 text-xs text-ink-soft">
+            <p>Filed · assigned to Electrical Maintenance · officer en route</p>
+          </div>
+        </Panel>
       </div>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="font-semibold text-slate-900">👤 Citizens</h3>
-          <p className="mt-1 text-sm text-slate-500">Submit and track issues, see status updates in real time.</p>
-        </div>
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="font-semibold text-slate-900">🏢 Department Officers</h3>
-          <p className="mt-1 text-sm text-slate-500">Work your department's queue, update status as you go.</p>
-        </div>
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="font-semibold text-slate-900">🛡️ Admins</h3>
-          <p className="mt-1 text-sm text-slate-500">Full oversight: assign, reassign, analytics, SLA tracking.</p>
-        </div>
+      <div className="mt-16 grid gap-4 border-t border-line pt-10 sm:grid-cols-3">
+        <Panel accent="signal" className="p-5">
+          <User size={18} className="text-signal" strokeWidth={2} />
+          <h3 className="font-display mt-3 font-semibold text-ink">Citizens</h3>
+          <p className="mt-1 text-sm text-ink-soft">
+            File a report with a photo-free description and a location. Track its status and add comments any time.
+          </p>
+        </Panel>
+        <Panel accent="steel" className="p-5">
+          <Building2 size={18} className="text-steel" strokeWidth={2} />
+          <h3 className="font-display mt-3 font-semibold text-ink">Department officers</h3>
+          <p className="mt-1 text-sm text-ink-soft">
+            Work your department's queue only — ranked by a rule-based priority score, not the order they arrived in.
+          </p>
+        </Panel>
+        <Panel accent="civic" className="p-5">
+          <ShieldCheck size={18} className="text-civic" strokeWidth={2} />
+          <h3 className="font-display mt-3 font-semibold text-ink">Admins</h3>
+          <p className="mt-1 text-sm text-ink-soft">
+            Full oversight: assign and reassign cases, manage departments, and watch SLA compliance in real time.
+          </p>
+        </Panel>
       </div>
-
-      <p className="mt-10 text-center text-xs text-slate-400">
-        First time running this? <Link to="/bootstrap-admin" className="underline">Create the admin account</Link>.
-      </p>
     </div>
   );
 }

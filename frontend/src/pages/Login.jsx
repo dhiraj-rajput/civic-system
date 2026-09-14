@@ -1,13 +1,12 @@
+import { KeyRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import Button from "../components/ui/Button.jsx";
+import { Field, TextInput } from "../components/ui/Field.jsx";
+import Panel from "../components/ui/Panel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-/* Ported from ResolveAI's `page_login` -- email/password form, error banner
- * on failed login, link to register. ResolveAI asked the user to pick a role
- * at login time and hit a role-specific endpoint; this backend infers the
- * role from the account itself via a single /auth/login + /auth/me, so
- * that selector is dropped as unnecessary. */
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -34,39 +33,26 @@ export default function Login() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
-      <h1 className="text-2xl font-bold text-slate-900">🔑 Login</h1>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Password</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </div>
-        {error && <p className="text-sm text-red-600">❌ {error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-slate-900 py-2 font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {submitting ? "Logging in…" : "Login"}
-        </button>
-      </form>
-      <p className="mt-4 text-center text-sm text-slate-500">
-        No account? <Link to="/register" className="font-medium text-slate-900 underline">Register</Link>
+      <div className="mb-6 flex items-center gap-2">
+        <KeyRound size={18} className="text-signal" strokeWidth={2.25} />
+        <h1 className="font-display text-2xl font-semibold text-ink">Login</h1>
+      </div>
+      <Panel className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Email">
+            <TextInput type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+          <Field label="Password">
+            <TextInput type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          {error && <p className="text-sm text-brick">{error}</p>}
+          <Button type="submit" variant="accent" disabled={submitting} className="w-full">
+            {submitting ? "Logging in…" : "Login"}
+          </Button>
+        </form>
+      </Panel>
+      <p className="mt-4 text-center text-sm text-ink-soft">
+        No account? <Link to="/register" className="font-medium text-steel underline underline-offset-2">Register</Link>
       </p>
     </div>
   );
