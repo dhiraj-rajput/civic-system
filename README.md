@@ -1,4 +1,402 @@
-# Smart Civic Complaint & Issue Management System
+# 🏛️ CivicPortal — Smart Civic Complaint & Issue Management System
+
+DPA Hackathon 2026 · Case Study 1 · Full-stack: FastAPI + MongoDB + React 19 + Tailwind v4.
+
+---
+
+## ⚡ Quick Start (Docker — Recommended)
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- Ports **8000** and **5173** must be free
+
+### Step 1 — Copy env files
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+
+### Step 2 — Build and start everything
+```bash
+docker compose up --build
+```
+First build takes ~3–5 min (downloads images + installs deps). Subsequent starts are instant:
+```bash
+docker compose up          # start without rebuilding
+docker compose down        # stop all services
+docker compose down -v     # stop AND wipe database (WARNING: deletes all data)
+```
+
+### Step 3 — Access the app
+
+| Service | URL |
+|---|---|
+| **Frontend (UI)** | http://localhost:5173 |
+| **Backend API** | http://localhost:8000 |
+| **Swagger / API Docs** | http://localhost:8000/docs |
+| **Health check** | http://localhost:8000/health |
+
+### Step 4 — Create the first Admin (one-time only)
+```bash
+curl -X POST http://localhost:8000/auth/bootstrap-admin \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Admin", "email": "admin@city.gov", "password": "Admin@1234"}'
+```
+Or visit **http://localhost:5173/bootstrap-admin** in the browser.
+
+> ⚠️ This works exactly **once**. After the first admin exists it permanently returns 403.
+
+### View logs per service
+```bash
+docker compose logs backend        --tail=50 -f
+docker compose logs civic-frontend --tail=50 -f
+docker compose logs mongo          --tail=20
+```
+
+---
+
+## 🛠️ Manual Setup (No Docker)
+
+### Start MongoDB separately
+```bash
+# Easiest: Docker just for Mongo
+docker run -d --name civic-mongo -p 27017:27017 mongo:7
+```
+
+### Backend
+```bash
+cd backend
+
+# Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Mac/Linux
+
+# Install all dependencies (FastAPI, Motor, rapidfuzz, etc.)
+pip install -r requirements.txt
+
+# Configure environment
+copy ..\.env.example .env     # Windows
+# cp ../.env.example .env     # Mac/Linux
+
+# Start the server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend
+```bash
+# Open a new terminal
+cd frontend
+
+bun install          # or: npm install
+bun dev              # or: npm run dev
+```
+
+Frontend → **http://localhost:5173** · Backend → **http://localhost:8000**
+
+---
+
+## 🧪 Manual Testing Guide
+
+### As a Citizen
+
+**Register:**
+1. Go to http://localhost:5173/register
+2. Click the **Citizen** role card
+3. Fill name, email, password (min 6 chars), click Create Account
+4. You'll land on the citizen dashboard
+
+**Submit a complaint:**
+1. Click **Submit Issue** in the left sidebar
+2. Click a category card (e.g. **Streetlight**)
+3. Type in the description field — try:
+   > *"The streetlight near Gate 3 has been broken for almost a week. The road is completely dark at night, very unsafe for children."*
+4. Wait ~1.5 seconds → an amber **AI Suggestion chip** will appear:
+   - *"AI suggests: Streetlight · HIGH Priority · 85% confident"*
+   - Click **Apply** to auto-select that category, or **✕** to dismiss
+5. Click **Use my location** (browser will ask permission) or type lat/lng manually
+6. Click **Submit Complaint**
+7. ✅ Success screen shows: Complaint ID, Priority badge, AI summary, and duplicate warning if flagged
+
+**Track your complaint:**
+1. Click **My Complaints** in the sidebar
+2. Use tabs to filter: All / Open / In Progress / Resolved
+3. Click a complaint row to expand it → shows the **4-step status stepper** + audit history timeline
+4. Type a comment and click Send
+
+---
+
+### As an Officer
+
+**Register:**
+1. Go to http://localhost:5173/register
+2. Click the **Officer** role card
+3. Fill name, email, password
+4. Select your department from the dropdown (loaded from the API)
+5. Create Account → land on officer dashboard
+
+**View your queue:**
+1. Dashboard shows: Priority Queue (top complaints by score) + SLA Warnings
+2. Click **My Queue** in the sidebar
+3. Complaints are sorted by priority (Critical first, red left border)
+4. Each card shows the **SLA timer** (e.g. "Due in 14h" or "OVERDUE 3h" in red)
+
+**Update a complaint status:**
+1. On a complaint card, use the **Status dropdown** (Assigned → In Progress → Resolved)
+2. Change the status → a toast notification confirms the update
+3. Add an official comment in the text field → click Send
+
+> **Note:** Officers only see complaints assigned to their department.
+
+---
+
+### As an Admin
+
+**Login** with the bootstrapped admin account.
+
+**Dashboard:**
+- 6 KPI cards: Total Complaints, Unresolved, Unassigned, SLA Compliance %, Avg Resolution, Duplicates
+- Two bar charts: by Status / by Category (pure SVG, no external library)
+- 30-day trend line chart: Filed vs Resolved per day
+- Top Hotspots (geographic clusters) + SLA Performance card
+
+**Assign a complaint:**
+1. Go to **All Complaints**
+2. Click any table row to expand it
+3. In the expanded section → Department dropdown → select a dept or choose **"Auto (by category)"**
+4. Click **Assign** → toast confirms → row updates instantly
+
+**Delete a complaint:**
+1. Click the 🗑️ icon in the row's Actions column
+2. A **confirmation modal** appears (no browser popup)
+3. Click **Confirm Delete** → toast confirms, row removed
+
+**Departments:**
+1. Go to **Departments** in sidebar → see all departments as cards
+2. Click **Edit** on any card → modal opens with editable fields
+3. Click **Add Department** → fill form → Save
+
+**Analytics:**
+1. Go to **Analytics** in sidebar
+2. Toggle **SLA threshold**: 48h / 72h / 96h → all numbers update
+3. See the **circular SLA compliance ring** (SVG stroke-dasharray technique)
+4. Scroll down for **Aging Complaints** (color coded: red >96h, orange >72h, amber >48h)
+
+---
+
+## 🤖 Test the AI Rule Engine via API
+
+No authentication required for these endpoints:
+
+```bash
+# Streetlight classification
+curl -X POST http://localhost:8000/ai/classify \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Streetlight near Gate 3 has been out for almost a week"}'
+
+# Full analysis (category + urgency + duration + location + summary)
+curl -X POST http://localhost:8000/ai/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Huge pothole on MG Road near the bus stop, my vehicle got damaged"}'
+
+# Test CRITICAL urgency detection
+curl -X POST http://localhost:8000/ai/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Exposed live wire near school playground, children could get electrocuted"}'
+```
+
+Expected outputs:
+- `"category": "streetlight"`, confidence > 0.8
+- `"category": "pothole"`, urgency_level: `"MEDIUM"` or `"HIGH"`, location_hints with road_refs
+- `"urgency_level": "CRITICAL"` with urgency_score ≥ 20
+
+---
+
+## 🔁 Run Automated Tests
+
+```bash
+cd backend
+
+# Activate virtualenv first (if not already active)
+.venv\Scripts\activate
+
+# Run all backend tests
+pytest tests/ -v
+
+# Run just the AI rule engine tests
+pytest tests/test_ai_extract.py -v
+
+# End-to-end RBAC smoke test (requires running backend)
+python scripts/verify_multi_user.py --base-url http://localhost:8000
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Black screen or blank page
+1. Open browser DevTools (`F12`) → **Console** tab → look for red errors
+2. Hard refresh: `Ctrl+Shift+R` (Windows) / `Cmd+Shift+R` (Mac)
+3. Check frontend container logs:
+   ```bash
+   docker compose logs civic-frontend --tail=50
+   ```
+4. If you see "Cannot find module" errors → rebuild:
+   ```bash
+   docker compose down && docker compose up --build
+   ```
+
+### Title still shows "Vite App" or old text
+- The title is set in `frontend/index.html` — should now read **"Civic Complaint Portal"**
+- If it's still the old title: force-refresh the browser (`Ctrl+Shift+R`) or clear the cache
+
+### Frontend can't reach the backend (Network Error)
+- Ensure `frontend/.env` has: `VITE_API_BASE_URL=http://localhost:8000`
+- Check backend is running: open http://localhost:8000/health in the browser
+
+### Port already in use
+```bash
+# Windows — find what's using port 8000:
+netstat -ano | findstr :8000
+# Then kill it:
+taskkill /PID <PID> /F
+```
+
+### MongoDB not connecting
+```bash
+docker compose ps                    # check if mongo container is running
+docker compose logs mongo --tail=20  # check mongo logs
+```
+
+### Complete reset (fresh start)
+```bash
+docker compose down -v       # removes containers AND volumes (all data wiped)
+docker compose up --build    # rebuild and start fresh
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+civic-complaint-system/
+├── backend/
+│   ├── app/
+│   │   ├── main.py                 # App factory, lifespan, index creation
+│   │   ├── core/
+│   │   │   ├── database.py         # Motor (async MongoDB) connection
+│   │   │   ├── deps.py             # require_role() RBAC dependency
+│   │   │   └── security.py         # JWT + bcrypt
+│   │   ├── routers/
+│   │   │   ├── auth.py             # register, login, bootstrap-admin, me
+│   │   │   ├── complaints.py       # CRUD + priority scoring + AI analysis
+│   │   │   ├── analytics.py        # summary, aging, hotspots, sla, trend
+│   │   │   ├── departments.py      # CRUD + auto-seed + category→dept map
+│   │   │   └── ai_router.py        # POST /ai/analyze · /ai/classify
+│   │   └── services/
+│   │       ├── ai_extract.py       # Rule-based NLP engine (pure Python, <10ms)
+│   │       └── priority.py         # Priority scoring + duplicate detection
+│   ├── requirements.txt
+│   └── tests/
+│       ├── test_health.py
+│       ├── test_flow.py            # RBAC end-to-end
+│       └── test_ai_extract.py      # Rule engine unit tests
+├── frontend/
+│   └── src/
+│       ├── context/
+│       │   ├── AuthContext.jsx     # JWT + user state
+│       │   └── ThemeContext.jsx    # Light/dark toggle + localStorage
+│       ├── components/
+│       │   ├── layout/             # Sidebar, TopBar, DashboardLayout, AuthLayout
+│       │   ├── ui/                 # Button, Field, Panel, Toast, Modal, Pagination...
+│       │   ├── charts/             # MiniBarChart, SimpleLineChart (pure SVG)
+│       │   └── ai/                 # AISuggestion chip
+│       └── pages/
+│           ├── citizen/            # Dashboard, Submit (with AI chip), Complaints
+│           ├── officer/            # Dashboard, Queue (with SLA timer)
+│           └── admin/              # Dashboard, Complaints, Analytics, Departments
+├── scripts/
+│   ├── seed_from_311.py            # Import NYC 311 open data
+│   └── verify_multi_user.py        # E2E auth/RBAC smoke test
+└── docker-compose.yml
+```
+
+---
+
+## 🎨 Theme System
+
+The UI has full **light mode + dark mode** with zero flash on page load.
+
+- Toggle: click the **☀️/🌙 button** in the top-right of any page
+- Preference is saved to `localStorage` — persists across sessions
+- Implementation: 40+ CSS custom properties in `src/index.css`, toggled via `.dark` class on `<html>`
+- FOUC prevention: tiny inline script in `<head>` applies the class before React mounts
+
+---
+
+## 👥 Roles
+
+| Role | Registration | Capabilities |
+|---|---|---|
+| **Admin** | `/bootstrap-admin` (once) | Manage all complaints, departments, full analytics |
+| **Officer** | `/register` → Officer → pick dept | Manage their dept's queue, update status/comments |
+| **Citizen** | `/register` → Citizen | Submit complaints, track own complaints, comment |
+
+---
+
+## 📡 API Reference (key endpoints)
+
+```
+# Auth
+POST /auth/register              → register citizen or officer
+POST /auth/login                 → login (returns JWT)
+GET  /auth/me                    → current user profile
+
+# Complaints
+POST   /complaints               → submit (citizen)
+GET    /complaints/mine          → my complaints (citizen)
+GET    /complaints               → all (admin) or dept-scoped (officer)
+PATCH  /complaints/{id}/status   → update status (officer/admin)
+PATCH  /complaints/{id}/assign   → assign to dept (admin); empty body = auto
+DELETE /complaints/{id}          → delete (admin)
+
+# AI (no auth required)
+POST /ai/analyze                 → full NLP analysis
+POST /ai/classify                → category + confidence only
+
+# Analytics (admin only)
+GET /analytics/summary           → KPI counts
+GET /analytics/sla               → SLA compliance %
+GET /analytics/trend?days=30     → daily filed/resolved counts
+GET /analytics/hotspots          → geographic complaint clusters
+GET /analytics/aging?sla_hours=72 → overdue complaints
+
+# Departments
+GET    /departments               → list all (public)
+POST   /departments               → create (admin)
+PATCH  /departments/{id}          → update (admin)
+```
+
+Full interactive docs: **http://localhost:8000/docs**
+
+---
+
+## 🌱 Seed Sample Data
+
+```bash
+# 100 complaints from NYC 311 live API
+python scripts/seed_from_311.py --limit 100
+
+# Last week only
+python scripts/seed_from_311.py --limit 500 --days 7
+
+# Dry run — no writes
+python scripts/seed_from_311.py --dry-run --limit 20
+
+# Use bundled sample (no internet needed)
+python scripts/seed_from_311.py --sample-file scripts/sample_311.json
+```
+
 
 DPA Hackathon 2026 -- Case Study 1, Stage 2. See `implementation-plan.md` for
 the full design (data model, prioritization formula, dashboard spec, 7-day

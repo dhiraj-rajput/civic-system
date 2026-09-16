@@ -1,8 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import DashboardLayout from "./components/layout/DashboardLayout.jsx";
 
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
@@ -21,31 +21,52 @@ import AdminComplaints from "./pages/admin/Complaints.jsx";
 import AdminDepartments from "./pages/admin/Departments.jsx";
 import AdminAnalytics from "./pages/admin/Analytics.jsx";
 
-/* Route tree mirrors ResolveAI's PAGE_MAP/nav structure (home/about/login/
- * register + per-role dashboard/complaints/etc. pages), using react-router
- * routes + ProtectedRoute instead of Streamlit's session-state page guard. */
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/bootstrap-admin" element={<BootstrapAdmin />} />
 
-          <Route path="/citizen" element={<ProtectedRoute roles={["citizen"]}><CitizenDashboard /></ProtectedRoute>} />
-          <Route path="/citizen/submit" element={<ProtectedRoute roles={["citizen"]}><CitizenSubmit /></ProtectedRoute>} />
-          <Route path="/citizen/complaints" element={<ProtectedRoute roles={["citizen"]}><CitizenComplaints /></ProtectedRoute>} />
+          {/* Authenticated Routes with Dashboard Layout */}
+          <Route path="/citizen/*" element={
+            <ProtectedRoute roles={["citizen"]}>
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<CitizenDashboard />} />
+                  <Route path="/submit" element={<CitizenSubmit />} />
+                  <Route path="/complaints" element={<CitizenComplaints />} />
+                </Routes>
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
 
-          <Route path="/officer" element={<ProtectedRoute roles={["officer"]}><OfficerDashboard /></ProtectedRoute>} />
-          <Route path="/officer/complaints" element={<ProtectedRoute roles={["officer"]}><OfficerComplaints /></ProtectedRoute>} />
+          <Route path="/officer/*" element={
+            <ProtectedRoute roles={["officer"]}>
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<OfficerDashboard />} />
+                  <Route path="/complaints" element={<OfficerComplaints />} />
+                </Routes>
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
 
-          <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/complaints" element={<ProtectedRoute roles={["admin"]}><AdminComplaints /></ProtectedRoute>} />
-          <Route path="/admin/departments" element={<ProtectedRoute roles={["admin"]}><AdminDepartments /></ProtectedRoute>} />
-          <Route path="/admin/analytics" element={<ProtectedRoute roles={["admin"]}><AdminAnalytics /></ProtectedRoute>} />
+          <Route path="/admin/*" element={
+            <ProtectedRoute roles={["admin"]}>
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<AdminDashboard />} />
+                  <Route path="/complaints" element={<AdminComplaints />} />
+                  <Route path="/departments" element={<AdminDepartments />} />
+                  <Route path="/analytics" element={<AdminAnalytics />} />
+                </Routes>
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

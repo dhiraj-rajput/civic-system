@@ -23,19 +23,28 @@ CLUSTER_RADIUS_METERS = 200
 DUPLICATE_WINDOW_DAYS = 14
 
 
-async def score_complaint(db, doc: dict) -> tuple[float, str]:
+import difflib
+import math
+
+async def score_complaint(db, doc: dict, urgency_level: str = "LOW", duration_days: int = 0) -> tuple[float, str]:
     age_hours = (datetime.utcnow() - doc["created_at"]).total_seconds() / 3600
+    if duration_days > 7:
+        age_hours += (duration_days - 7) * 24
+        
     age_score = min(age_hours / (24 * 7), 1.0)
 
     category_score = CATEGORY_WEIGHT.get(doc["category"], 0.3)
 
+    # Use $geoWithin with $centerSphere for MongoDB 8 compatibility (avoids $near sort error in count_documents)
+    # Earth radius in meters is approx 6,378,100
+    radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
+    coords = doc["location"]["coordinates"]
     cluster_count = await db.complaints.count_documents(
         {
             "category": doc["category"],
             "location": {
-                "$near": {
-                    "$geometry": doc["location"],
-                    "$maxDistance": CLUSTER_RADIUS_METERS,
+                "$geoWithin": {
+                    "$centerSphere": [coords, radius_radians]
                 }
             },
         }
@@ -43,7 +52,14 @@ async def score_complaint(db, doc: dict) -> tuple[float, str]:
     cluster_score = min(cluster_count / 10, 1.0)
 
     raw = W_AGE * age_score + W_CATEGORY * category_score + W_CLUSTER * cluster_score
-    score = round(raw * 100, 1)
+    score = raw * 100
+    
+    if urgency_level == "CRITICAL":
+        score *= 1.5
+    elif urgency_level == "HIGH":
+        score *= 1.2
+        
+    score = min(round(score, 1), 100.0)
 
     if score >= 85:
         label = "Critical"
@@ -54,6 +70,44 @@ async def score_complaint(db, doc: dict) -> tuple[float, str]:
     else:
         label = "Low"
     return score, label
+
+def score_batch(complaints: list[dict]) -> list[tuple[float, str]]:
+    results = []
+    now = datetime.utcnow()
+    for doc in complaints:
+        age_hours = (now - doc["created_at"]).total_seconds() / 3600
+        age_score = min(age_hours / (24 * 7), 1.0)
+        category_score = CATEGORY_WEIGHT.get(doc["category"], 0.3)
+        # Without DB, we assume cluster_score is 0 or pre-calculated
+        cluster_score = doc.get("cluster_score", 0.0)
+        raw = W_AGE * age_score + W_CATEGORY * category_score + W_CLUSTER * cluster_score
+        score = raw * 100
+        score = min(round(score, 1), 100.0)
+        if score >= 85: label = "Critical"
+        elif score >= 65: label = "High"
+        elif score >= 40: label = "Medium"
+        else: label = "Low"
+        results.append((score, label))
+    return results
+
+def get_duplicate_score(new_doc: dict, candidate_doc: dict) -> float:
+    time_diff = abs((new_doc["created_at"] - candidate_doc["created_at"]).total_seconds())
+    if time_diff > DUPLICATE_WINDOW_DAYS * 86400:
+        return 0.0
+        
+    score = 0.0
+    if new_doc["category"] == candidate_doc["category"]:
+        score += 0.4
+        
+    # Assuming the candidate is already retrieved via the $near geo-query, meaning it's within 200m
+    score += 0.4 
+    
+    desc1 = new_doc.get("description", "")
+    desc2 = candidate_doc.get("description", "")
+    text_sim = difflib.SequenceMatcher(None, desc1, desc2).ratio()
+    score += text_sim * 0.2
+    
+    return score
 
 
 async def detect_duplicate(db, doc: dict) -> tuple[bool, str | None]:
@@ -67,15 +121,16 @@ async def detect_duplicate(db, doc: dict) -> tuple[bool, str | None]:
     treat the complaint's own id as the group id in that case.
     """
     cutoff = datetime.utcnow() - timedelta(days=DUPLICATE_WINDOW_DAYS)
+    radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
+    coords = doc["location"]["coordinates"]
     earliest_match = await db.complaints.find_one(
         {
             "_id": {"$ne": doc.get("_id")},
             "category": doc["category"],
             "created_at": {"$gte": cutoff},
             "location": {
-                "$near": {
-                    "$geometry": doc["location"],
-                    "$maxDistance": CLUSTER_RADIUS_METERS,
+                "$geoWithin": {
+                    "$centerSphere": [coords, radius_radians]
                 }
             },
         },

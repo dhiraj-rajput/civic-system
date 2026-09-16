@@ -1,30 +1,52 @@
-/* Form primitives. One consistent look for every input in the app instead
- * of re-typing border/padding/focus classes on each page. */
 export function Field({ label, hint, error, children }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-ink">{label}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-ink-secondary">{label}</label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-brick">{error}</p>}
+      {hint && !error && <p className="text-xs text-ink-muted">{hint}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }
 
-const fieldClass =
-  "mt-1 w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-steel focus:outline-none focus:ring-1 focus:ring-steel";
-
-export function TextInput(props) {
-  return <input className={fieldClass} {...props} />;
+export function TextInput({ leftIcon: LeftIcon, rightElement, ...props }) {
+  return (
+    <div className="relative flex items-center">
+      {LeftIcon && (
+        <div className="absolute left-3 text-ink-muted">
+          <LeftIcon size={16} />
+        </div>
+      )}
+      <input
+        className={`h-11 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus transition-all ${
+          LeftIcon ? "pl-9" : ""
+        } ${rightElement ? "pr-10" : ""}`}
+        {...props}
+      />
+      {rightElement && (
+        <div className="absolute right-3 flex items-center">
+          {rightElement}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function TextArea(props) {
-  return <textarea className={fieldClass} {...props} />;
+  return (
+    <textarea 
+      className="min-h-[100px] w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus transition-all resize-y" 
+      {...props} 
+    />
+  );
 }
 
 export function Select({ children, ...props }) {
   return (
-    <select className={fieldClass} {...props}>
+    <select 
+      className="h-11 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-ink focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus transition-all" 
+      {...props}
+    >
       {children}
     </select>
   );

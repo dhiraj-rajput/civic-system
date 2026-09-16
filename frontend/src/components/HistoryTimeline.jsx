@@ -1,33 +1,71 @@
-import { FilePlus, RefreshCw, Building2, MessageSquare } from "lucide-react";
+import React from 'react';
+import { PlusCircle, UserCheck, RefreshCw, MessageSquare } from 'lucide-react';
 
-/* Case-file timeline: a plain vertical rule with small icon markers rather
- * than a decorative dot-and-gradient timeline. Ported from ResolveAI's
- * "Track complaint" button, which just dumped raw JSON via st.json(). */
-const EVENT_ICON = {
-  created: FilePlus,
-  status_changed: RefreshCw,
-  assigned: Building2,
-  comment_added: MessageSquare,
+const EVENT_CONFIG = {
+  created: { icon: PlusCircle, color: 'text-status-new', bg: 'bg-status-new/10' },
+  assigned: { icon: UserCheck, color: 'text-status-assigned', bg: 'bg-status-assigned/10' },
+  status_changed: { icon: RefreshCw, color: 'text-status-inprogress', bg: 'bg-status-inprogress/10' },
+  comment_added: { icon: MessageSquare, color: 'text-ink-muted', bg: 'bg-priority-low/10' }
 };
 
-export default function HistoryTimeline({ history }) {
-  if (!history?.length) {
-    return <p className="text-sm text-ink-soft">No history yet.</p>;
+function formatRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function formatAbsoluteTime(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+export default function HistoryTimeline({ history = [] }) {
+  if (!history || history.length === 0) {
+    return (
+      <div className="py-8 text-center text-ink-muted bg-surface-muted rounded-md border border-border border-dashed">
+        No history yet
+      </div>
+    );
   }
+
   return (
-    <ol className="space-y-4 border-l border-line pl-4">
-      {history.map((h, i) => {
-        const Icon = EVENT_ICON[h.event] || FilePlus;
+    <div className="relative pl-6 border-l border-border space-y-8">
+      {history.map((item, index) => {
+        const config = EVENT_CONFIG[item.event] || EVENT_CONFIG.comment_added;
+        const Icon = config.icon;
+
         return (
-          <li key={i} className="relative">
-            <span className="absolute -left-[1.4rem] top-0 flex h-5 w-5 items-center justify-center rounded-full bg-paper text-steel ring-1 ring-line">
-              <Icon size={11} strokeWidth={2.25} />
-            </span>
-            <p className="text-sm text-ink">{h.detail}</p>
-            <p className="font-ref text-xs text-ink-soft">{new Date(h.at).toLocaleString()}</p>
-          </li>
+          <div key={index} className="relative">
+            {/* Timeline Dot */}
+            <div className={`absolute -left-[35px] top-1 w-6 h-6 rounded-full flex items-center justify-center border-4 border-card ${config.bg} ${config.color} shadow-sm`}>
+              <Icon size={12} strokeWidth={3} />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between bg-card rounded-md border border-border shadow-sm p-3 hover:shadow-md transition-shadow">
+              <div className="text-sm text-ink mb-1 sm:mb-0">
+                {item.detail}
+              </div>
+              <div className="flex flex-col items-end text-xs text-ink-muted whitespace-nowrap">
+                <span className="font-medium">{formatRelativeTime(item.at)}</span>
+                <span className="text-[10px] opacity-75">{formatAbsoluteTime(item.at)}</span>
+              </div>
+            </div>
+          </div>
         );
       })}
-    </ol>
+    </div>
   );
 }

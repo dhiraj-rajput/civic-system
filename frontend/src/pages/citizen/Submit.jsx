@@ -1,162 +1,319 @@
-import { FileText, LocateFixed } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  AlertTriangle, Trash2, Lightbulb, Droplets, MapPin, 
+  Map, MoreHorizontal, Check, RefreshCw
+} from 'lucide-react';
+import { api } from '../../api/client.js';
+import Button from '../../components/ui/Button.jsx';
+import AISuggestion from '../../components/ai/AISuggestion.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
+import { PriorityBadge } from '../../components/Badges.jsx';
 
-import { api } from "../../api/client.js";
-import Button from "../../components/ui/Button.jsx";
-import { Field, Select, TextArea, TextInput } from "../../components/ui/Field.jsx";
-import PageHeader from "../../components/ui/PageHeader.jsx";
-import Panel from "../../components/ui/Panel.jsx";
-import { PriorityBadge } from "../../components/Badges.jsx";
-import { CATEGORIES } from "../../constants.js";
+const CATEGORIES = [
+  { id: 'pothole', icon: AlertTriangle, label: 'Pothole', desc: 'Road damage or deep holes' },
+  { id: 'garbage', icon: Trash2, label: 'Garbage', desc: 'Uncollected waste or dumping' },
+  { id: 'streetlight', icon: Lightbulb, label: 'Streetlight', desc: 'Broken or flickering lights' },
+  { id: 'water_supply', icon: Droplets, label: 'Water Supply', desc: 'Leaks or pressure issues' },
+  { id: 'other', icon: MoreHorizontal, label: 'Other', desc: 'Any other civic issue' },
+];
 
-export default function CitizenSubmit() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    category: "pothole",
-    description: "",
-    lat: "",
-    lng: "",
-    address_text: "",
-  });
-  const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [locating, setLocating] = useState(false);
+export default function SubmitComplaint() {
+  const { toast } = useToast();
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [description, setDescription] = useState('');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
+  const [address, setAddress] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedData, setSubmittedData] = useState(null);
+  
+  // AI Suggestion State
+  const [aiResult, setAiResult] = useState(null);
+  const [typingTimeout, setTypingTimeout] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  function update(field) {
-    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
-  }
-
-  function useMyLocation() {
-    if (!navigator.geolocation) {
-      setError("Geolocation isn't available in this browser -- enter coordinates manually.");
+  const analyzeText = async (text) => {
+    if (text.length < 15) {
+      setAiResult(null);
       return;
     }
-    setLocating(true);
+    
+    setIsAnalyzing(true);
+    try {
+      const result = await api.post('/ai/analyze', { description: text });
+      setAiResult(result);
+    } catch (err) {
+      console.error('AI Analysis failed:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDescriptionChange = (e) => {
+    const text = e.target.value;
+    setDescription(text);
+    
+    if (typingTimeout) clearTimeout(typingTimeout);
+    
+    const newTimeout = setTimeout(() => {
+      analyzeText(text);
+    }, 1500);
+    setTypingTimeout(newTimeout);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout);
+    };
+  }, [typingTimeout]);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    
+    toast.info('Getting your location...');
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((f) => ({ ...f, lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }));
-        setLocating(false);
+      (position) => {
+        setLat(position.coords.latitude.toFixed(6));
+        setLng(position.coords.longitude.toFixed(6));
+        toast.success('Location updated');
       },
-      () => {
-        setError("Could not get your location -- enter coordinates manually.");
-        setLocating(false);
+      (error) => {
+        toast.error('Unable to retrieve your location');
       }
+    );
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedCategory || !description || !address) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        category: selectedCategory,
+        description,
+        address_text: address,
+        location: {
+          lat: lat ? parseFloat(lat) : 40.7128,
+          lng: lng ? parseFloat(lng) : -74.0060,
+        },
+      };
+      
+      const response = await api.post('/complaints', payload);
+      setSubmittedData(response);
+      toast.success('Complaint submitted successfully');
+    } catch (err) {
+      toast.error(err.detail || 'Failed to submit complaint');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSubmittedData(null);
+    setSelectedCategory('');
+    setDescription('');
+    setLat('');
+    setLng('');
+    setAddress('');
+    setAiResult(null);
+  };
+
+  if (submittedData) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+        <div className="w-24 h-24 rounded-full bg-success/20 flex items-center justify-center mb-6">
+          <Check size={48} className="text-success animate-[bounce_1s_ease-in-out]" />
+        </div>
+        
+        <h1 className="text-3xl font-bold text-ink mb-2">Complaint Submitted</h1>
+        <p className="text-ink-secondary mb-8 text-center max-w-md">
+          Your issue has been successfully reported to the authorities.
+        </p>
+
+        <div className="bg-card border border-border rounded-xl shadow-sm w-full p-6 mb-8">
+          <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm mb-6">
+            <div className="text-ink-secondary">Complaint ID</div>
+            <div className="font-mono font-medium text-ink text-right">#{submittedData.id}</div>
+            
+            <div className="text-ink-secondary">Category</div>
+            <div className="font-medium text-ink text-right">{submittedData.category}</div>
+            
+            <div className="text-ink-secondary">Priority</div>
+            <div className="text-right">
+              <PriorityBadge priority={submittedData.priority} />
+            </div>
+          </div>
+          
+          {submittedData.ai_summary && (
+            <div className="bg-brand/5 border border-brand/20 p-4 rounded-lg">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-brand mb-1">AI Summary</h3>
+              <p className="text-sm text-ink-secondary">{submittedData.ai_summary}</p>
+            </div>
+          )}
+          
+          {submittedData.is_duplicate && (
+            <div className="mt-4 bg-warning/10 border border-warning/30 p-4 rounded-lg flex gap-3 text-warning-dark text-sm">
+              <AlertTriangle size={18} className="shrink-0 text-warning" />
+              <div>
+                <strong>Potential Duplicate:</strong> A similar issue has already been reported in this area. It has been linked.
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-4 w-full">
+          <Button as={Link} to="/citizen/complaints" variant="outline" className="flex-1">
+            View My Complaints
+          </Button>
+          <Button onClick={resetForm} variant="primary" className="flex-1">
+            Submit Another
+          </Button>
+        </div>
+      </div>
     );
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
-    setResult(null);
-
-    if (!form.description.trim()) {
-      setError("Description is required.");
-      return;
-    }
-    const lat = parseFloat(form.lat);
-    const lng = parseFloat(form.lng);
-    if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      setError("Valid latitude and longitude are required.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const complaint = await api.post("/complaints", {
-        category: form.category,
-        description: form.description,
-        location: { lat, lng },
-        address_text: form.address_text || null,
-      });
-      setResult(complaint);
-    } catch (err) {
-      setError(err.detail || "Submission failed.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
-      <PageHeader icon={FileText} title="Submit a complaint" description="Category, description, and location -- that's all it takes to open a case." />
-
-      {result ? (
-        <Panel accent="civic" className="mt-6 p-6">
-          <p className="font-ref text-sm text-ink-soft">{result.complaint_id}</p>
-          <p className="mt-1 font-medium text-ink">Complaint filed successfully.</p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-ink-soft">
-            Priority assessed: <PriorityBadge priority={result.priority_label} />
-            <span className="font-ref">({result.priority_score.toFixed(1)})</span>
-          </div>
-          {result.is_duplicate && (
-            <p className="mt-3 rounded border border-signal/40 bg-signal/10 px-3 py-2 text-sm text-signal-dark">
-              This looks similar to a recent nearby complaint of the same type -- flagged for review.
-            </p>
-          )}
-          <div className="mt-5 flex gap-3">
-            <Button variant="primary" onClick={() => navigate("/citizen/complaints")}>
-              View my complaints
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setResult(null);
-                setForm({ category: "pothole", description: "", lat: "", lng: "", address_text: "" });
-              }}
-            >
-              Submit another
-            </Button>
-          </div>
-        </Panel>
-      ) : (
-        <Panel className="mt-6 p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Category">
-              <Select value={form.category} onChange={update("category")}>
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Description">
-              <TextArea
-                required
-                rows={4}
-                value={form.description}
-                onChange={update("description")}
-                placeholder="Describe the issue -- location landmarks, how long it's been there, etc."
-              />
-            </Field>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-ink">Location</label>
+    <div className="mx-auto max-w-3xl px-4 py-8 animate-in fade-in duration-500">
+      <h1 className="text-2xl font-bold text-ink mb-6">Report a Civic Issue</h1>
+      
+      <form onSubmit={handleSubmit} className="space-y-8 bg-card border border-border p-6 sm:p-8 rounded-xl shadow-sm">
+        
+        {/* Category Selection */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-ink">
+            What type of issue is this? <span className="text-danger">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const isSelected = selectedCategory === cat.id;
+              return (
                 <button
+                  key={cat.id}
                   type="button"
-                  onClick={useMyLocation}
-                  disabled={locating}
-                  className="flex items-center gap-1 text-xs font-medium text-steel hover:underline"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all duration-200 ${
+                    isSelected 
+                      ? 'border-brand bg-brand/5 shadow-[0_0_0_1px_var(--color-brand)]' 
+                      : 'border-border bg-card hover:bg-surface-hover hover:border-border-strong'
+                  }`}
                 >
-                  <LocateFixed size={13} strokeWidth={2} />
-                  {locating ? "Locating…" : "Use my current location"}
+                  <div className={`mt-0.5 ${isSelected ? 'text-brand' : 'text-ink-muted'}`}>
+                    <Icon size={20} />
+                  </div>
+                  <div>
+                    <div className={`font-medium text-sm ${isSelected ? 'text-brand' : 'text-ink'}`}>
+                      {cat.label}
+                    </div>
+                    <div className="text-xs text-ink-muted mt-0.5">{cat.desc}</div>
+                  </div>
                 </button>
-              </div>
-              <div className="mt-1 grid grid-cols-2 gap-3">
-                <TextInput required placeholder="Latitude" value={form.lat} onChange={update("lat")} />
-                <TextInput required placeholder="Longitude" value={form.lng} onChange={update("lng")} />
-              </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-ink">
+              Description <span className="text-danger">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              {isAnalyzing && <RefreshCw size={14} className="animate-spin text-ink-muted" />}
+              <span className="text-xs text-ink-muted">{description.length}/1000</span>
             </div>
-            <Field label="Address / landmark (optional)">
-              <TextInput value={form.address_text} onChange={update("address_text")} />
-            </Field>
-            {error && <p className="text-sm text-brick">{error}</p>}
-            <Button type="submit" variant="accent" disabled={submitting} className="w-full">
-              {submitting ? "Submitting…" : "Submit complaint"}
+          </div>
+          
+          <div className="relative">
+            <textarea
+              value={description}
+              onChange={handleDescriptionChange}
+              rows={4}
+              maxLength={1000}
+              placeholder="Please provide details about the issue..."
+              className="w-full rounded-md border border-border bg-surface-input px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand resize-y min-h-[100px]"
+            />
+          </div>
+          
+          <AISuggestion 
+            suggestion={aiResult} 
+            onAccept={() => {
+              setSelectedCategory(aiResult.category);
+              toast.success(`Category updated to ${aiResult.category}`);
+              setAiResult(null);
+            }} 
+            onDismiss={() => setAiResult(null)} 
+          />
+        </div>
+
+        {/* Location Section */}
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-ink">
+              Location details <span className="text-danger">*</span>
+            </label>
+            <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
+              <MapPin size={14} /> Use my location
             </Button>
-          </form>
-        </Panel>
-      )}
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-ink-secondary mb-1">Latitude</label>
+              <input
+                type="text"
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                placeholder="e.g. 19.0760"
+                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-secondary mb-1">Longitude</label>
+              <input
+                type="text"
+                value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                placeholder="e.g. 72.8777"
+                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary mb-1">Street Address <span className="text-danger">*</span></label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-muted">
+                <Map size={16} />
+              </div>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter exact address or landmark"
+                className="w-full rounded-md border border-border bg-surface-input pl-10 pr-4 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-border flex justify-end">
+          <Button type="submit" variant="primary" size="lg" isLoading={isSubmitting} className="w-full sm:w-auto">
+            Submit Complaint
+          </Button>
+        </div>
+        
+      </form>
     </div>
   );
 }

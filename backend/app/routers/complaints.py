@@ -24,6 +24,7 @@ from app.schemas.complaint import (
     StatusUpdate,
 )
 from app.services.priority import detect_duplicate, score_complaint
+from app.services.ai_extract import analyze_complaint
 
 router = APIRouter(prefix="/complaints", tags=["complaints"])
 
@@ -47,6 +48,7 @@ def _to_out(doc: dict) -> ComplaintOut:
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],
         resolved_at=doc.get("resolved_at"),
+        ai_analysis=doc.get("ai_analysis"),
     )
 
 
@@ -138,9 +140,22 @@ async def create_complaint(
     result = await db.complaints.insert_one(doc)
     doc["_id"] = result.inserted_id
 
-    score, label = await score_complaint(db, doc)
+    ai_result = analyze_complaint(payload.description)
+    doc["ai_analysis"] = {
+        "category_suggestion": ai_result["category"],
+        "urgency_level": ai_result["urgency_level"],
+        "summary": ai_result["summary"],
+        "location_hints": ai_result["location_hints"]
+    }
+    
+    score, label = await score_complaint(
+        db, doc, 
+        urgency_level=ai_result["urgency_level"], 
+        duration_days=ai_result.get("duration", {}).get("days", 0)
+    )
     is_dup, group_id = await detect_duplicate(db, doc)
-    update = {"priority_score": score, "priority_label": label, "is_duplicate": is_dup}
+    update = {"priority_score": score, "priority_label": label, "is_duplicate": is_dup, "ai_analysis": doc["ai_analysis"]}
+    
     if is_dup:
         update["duplicate_group_id"] = group_id
         history_entry = {
@@ -150,6 +165,15 @@ async def create_complaint(
         }
         doc["history"].append(history_entry)
         await db.complaints.update_one({"_id": result.inserted_id}, {"$push": {"history": history_entry}})
+
+    if ai_result["category"] != payload.category and ai_result["confidence"] > 0.7:
+        ai_history_entry = {
+            "event": "comment_added",
+            "detail": f"AI suggested category: {ai_result['category']} (confidence: {ai_result['confidence']*100:.1f}%)",
+            "at": now,
+        }
+        doc["history"].append(ai_history_entry)
+        await db.complaints.update_one({"_id": result.inserted_id}, {"$push": {"history": ai_history_entry}})
 
     await db.complaints.update_one({"_id": result.inserted_id}, {"$set": update})
     doc.update(update)

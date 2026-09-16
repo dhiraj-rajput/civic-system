@@ -1,11 +1,12 @@
-import { UserPlus } from "lucide-react";
-import { useState } from "react";
+import { UserPlus, User, Shield, Mail, KeyRound, Eye, EyeOff, Building2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import Button from "../components/ui/Button.jsx";
 import { Field, Select, TextInput } from "../components/ui/Field.jsx";
-import Panel from "../components/ui/Panel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import AuthLayout from "../components/layout/AuthLayout.jsx";
+import { api } from "../api/client.js";
 
 export default function Register() {
   const { register } = useAuth();
@@ -18,12 +19,28 @@ export default function Register() {
     role: "citizen",
     department: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    if (form.role === "officer") {
+      api.get("/departments/").then(setDepartments).catch(() => {});
+    }
+  }, [form.role]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
   }
+
+  function getPasswordStrength(pass) {
+    if (!pass) return { score: 0, label: "", color: "bg-border" };
+    if (pass.length < 6) return { score: 1, label: "Weak", color: "bg-danger" };
+    if (pass.length < 10) return { score: 2, label: "Medium", color: "bg-warning" };
+    return { score: 3, label: "Strong", color: "bg-success" };
+  }
+  const strength = getPasswordStrength(form.password);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -54,48 +71,146 @@ export default function Register() {
   }
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-16">
-      <div className="mb-6 flex items-center gap-2">
-        <UserPlus size={18} className="text-signal" strokeWidth={2.25} />
-        <h1 className="font-display text-2xl font-semibold text-ink">Register</h1>
-      </div>
-      <Panel className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Full name">
-            <TextInput value={form.name} onChange={update("name")} />
-          </Field>
-          <Field label="Email">
-            <TextInput type="email" value={form.email} onChange={update("email")} />
-          </Field>
-          <Field label="Password">
-            <TextInput type="password" value={form.password} onChange={update("password")} />
-          </Field>
-          <Field label="Confirm password">
-            <TextInput type="password" value={form.confirm} onChange={update("confirm")} />
-          </Field>
-          <Field label="I am a">
-            <Select value={form.role} onChange={update("role")}>
-              <option value="citizen">Citizen</option>
-              <option value="officer">Department Officer</option>
-            </Select>
-          </Field>
-          {form.role === "officer" && (
-            <Field
-              label="Department"
-              hint="Must match a department name exactly (see the public departments list) for assignment scoping to work."
-            >
-              <TextInput value={form.department} onChange={update("department")} placeholder="e.g. Roads & Public Works" />
+    <AuthLayout>
+      <div className="w-full">
+        <div className="mb-6">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Create an account</h1>
+          <p className="mt-2 text-ink-secondary">Join the civic platform to report or resolve issues.</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-ink">Account type</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, role: "citizen" })}
+                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all ${
+                  form.role === "citizen" 
+                    ? "border-brand bg-brand/5 ring-1 ring-brand" 
+                    : "border-border bg-card hover:border-border-strong hover:bg-hover"
+                }`}
+              >
+                <div className={`rounded-full p-2 ${form.role === "citizen" ? "bg-brand text-white" : "bg-hover text-ink-secondary"}`}>
+                  <User size={18} />
+                </div>
+                <div>
+                  <div className="font-medium text-ink">Citizen</div>
+                  <div className="text-xs text-ink-muted">I want to report civic issues</div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, role: "officer" })}
+                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all ${
+                  form.role === "officer" 
+                    ? "border-brand bg-brand/5 ring-1 ring-brand" 
+                    : "border-border bg-card hover:border-border-strong hover:bg-hover"
+                }`}
+              >
+                <div className={`rounded-full p-2 ${form.role === "officer" ? "bg-brand text-white" : "bg-hover text-ink-secondary"}`}>
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <div className="font-medium text-ink">Officer</div>
+                  <div className="text-xs text-ink-muted">I work for a department</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-ink border-b border-border pb-2">Personal details</h3>
+            <Field label="Full name">
+              <TextInput value={form.name} onChange={update("name")} placeholder="John Doe" leftIcon={User} />
             </Field>
+            <Field label="Email address">
+              <TextInput type="email" value={form.email} onChange={update("email")} placeholder="you@example.com" leftIcon={Mail} />
+            </Field>
+            
+            <div className="space-y-2">
+              <Field label="Password">
+                <TextInput 
+                  type={showPassword ? "text" : "password"} 
+                  value={form.password} 
+                  onChange={update("password")} 
+                  placeholder="••••••••" 
+                  leftIcon={KeyRound}
+                  rightElement={
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-ink-muted hover:text-ink transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
+                />
+              </Field>
+              {form.password && (
+                <div className="flex items-center gap-2">
+                  <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                    <div className={`h-full transition-all duration-300 ${strength.color}`} style={{ width: `${(strength.score / 3) * 100}%` }} />
+                  </div>
+                  <span className="w-12 text-right text-xs font-medium text-ink-secondary">{strength.label}</span>
+                </div>
+              )}
+            </div>
+
+            <Field label="Confirm password">
+              <TextInput 
+                type={showPassword ? "text" : "password"} 
+                value={form.confirm} 
+                onChange={update("confirm")} 
+                placeholder="••••••••" 
+                leftIcon={KeyRound} 
+              />
+            </Field>
+          </div>
+
+          {form.role === "officer" && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              <h3 className="text-sm font-medium text-ink border-b border-border pb-2">Department details</h3>
+              <Field label="Department" hint="Must match a public department name.">
+                {departments.length > 0 ? (
+                  <Select value={form.department} onChange={update("department")}>
+                    <option value="">Select a department...</option>
+                    {departments.map((d) => (
+                      <option key={d.name} value={d.name}>{d.name}</option>
+                    ))}
+                  </Select>
+                ) : (
+                  <TextInput 
+                    value={form.department} 
+                    onChange={update("department")} 
+                    placeholder="e.g. Roads & Public Works" 
+                    leftIcon={Building2} 
+                  />
+                )}
+              </Field>
+            </div>
           )}
-          {error && <p className="text-sm text-brick">{error}</p>}
-          <Button type="submit" variant="accent" disabled={submitting} className="w-full">
-            {submitting ? "Registering…" : "Register"}
+
+          {error && (
+            <div className="rounded-md bg-danger/10 p-3 text-sm text-danger border border-danger/20">
+              {error}
+            </div>
+          )}
+
+          <Button type="submit" variant="primary" isLoading={submitting} className="w-full">
+            Create account
           </Button>
         </form>
-      </Panel>
-      <p className="mt-4 text-center text-sm text-ink-soft">
-        Already have an account? <Link to="/login" className="font-medium text-steel underline underline-offset-2">Login</Link>
-      </p>
-    </div>
+        
+        <div className="mt-6 flex items-center justify-center space-x-2 border-t border-border pt-6 text-sm">
+          <span className="text-ink-secondary">Already have an account?</span>
+          <Link to="/login" className="font-medium text-brand hover:text-brand-light">
+            Sign in
+          </Link>
+        </div>
+      </div>
+    </AuthLayout>
   );
 }

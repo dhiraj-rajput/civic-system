@@ -1,33 +1,37 @@
-/* Small variant system instead of one-off className strings scattered
- * across every page -- four variants cover every action in the app:
- * primary (steel, structural actions like nav CTAs), accent (signal amber,
- * reserved for the one action per screen that matters most -- submit,
- * save), outline (secondary actions), danger (destructive only). */
+import { Loader2 } from "lucide-react";
+
 const VARIANTS = {
-  primary: "bg-steel text-white hover:bg-steel-dark",
-  accent: "bg-signal text-ink hover:bg-signal-dark hover:text-white",
-  outline: "border border-line text-ink hover:border-steel hover:text-steel",
-  danger: "border border-brick/40 text-brick hover:bg-brick hover:text-white",
-  ghost: "text-ink-soft hover:text-ink",
+  primary: "bg-brand text-white hover:bg-brand-light",
+  accent: "bg-accent text-white hover:bg-accent-dark",
+  outline: "border border-border-strong text-ink hover:border-brand hover:text-brand",
+  danger: "border border-danger text-danger hover:bg-danger hover:text-white",
+  ghost: "text-ink-secondary hover:text-ink hover:bg-hover",
 };
 
 const SIZES = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-5 py-2.5 text-base",
+  sm: "px-3 py-1.5 text-sm h-[32px]",
+  md: "px-4 py-2 text-sm h-[40px]",
+  lg: "px-5 py-2.5 text-base h-[44px]",
 };
 
 export default function Button({
   variant = "primary",
   size = "md",
   className = "",
+  isLoading = false,
+  disabled,
+  children,
   as: Component = "button",
   ...props
 }) {
   return (
     <Component
-      className={`inline-flex items-center justify-center gap-2 rounded font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      disabled={isLoading || disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...props}
-    />
+    >
+      {isLoading && <Loader2 className="animate-spin" size={16} />}
+      {children}
+    </Component>
   );
 }

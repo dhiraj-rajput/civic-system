@@ -1,55 +1,252 @@
 @import "tailwindcss";
 
-/*
- * Design language: "municipal case-file."
- * A complaint is a filed case with a reference number, not a social post --
- * so the visual system borrows from official forms and street signage
- * rather than the default rounded-card SaaS kit: flat panels with a
- * left accent rule instead of uniform drop-shadows, small radii, a
- * structural top bar, and monospace for reference numbers/timestamps
- * (they're identifiers, not prose). One warm accent (signal amber, the
- * hazard-marking color of public works) carries all emphasis; steel-blue
- * carries structure/navigation; brick and civic-green are reserved for
- * status meaning (open/resolved), not decoration.
- */
-@theme {
-  --color-ink: #101820;
-  --color-ink-soft: #46525c;
-  --color-paper: #eff1ec;
-  --color-surface: #ffffff;
-  --color-line: #d7dad3;
+/* Tell Tailwind to use .dark class instead of prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  --color-steel: #2c4a63;
-  --color-steel-dark: #1c3245;
-
-  --color-signal: #e0891e;
-  --color-signal-dark: #b56c14;
-
-  --color-brick: #b3401c;
-  --color-civic: #3f7a52;
-
-  --font-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, sans-serif;
-  --font-ref: "IBM Plex Mono", ui-monospace, monospace;
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — LIGHT MODE
+═══════════════════════════════════════════ */
+:root {
+  /* Brand palette */
+  --brand-primary: #1e3a5f;      /* Deep navy */
+  --brand-primary-light: #2563eb; /* Bright blue */
+  --brand-accent: #f59e0b;       /* Amber */
+  --brand-accent-dark: #d97706;  /* Dark amber */
+  --brand-danger: #dc2626;       /* Red */
+  --brand-success: #16a34a;      /* Green */
+  --brand-warning: #ea580c;      /* Orange */
+  
+  /* Surface colors */
+  --surface-bg: #f8fafc;         /* Page background */
+  --surface-card: #ffffff;       /* Card/panel background */
+  --surface-sidebar: #161618;    /* Charcoal sidebar (stays dark in light mode) */
+  --surface-sidebar-hover: #26262a;
+  --surface-input: #ffffff;      /* Input background */
+  --surface-hover: #f1f5f9;      /* Hover state */
+  --surface-muted: #f8fafc;      /* Muted sections */
+  
+  /* Text colors */
+  --text-primary: #0f172a;       /* Main text */
+  --text-secondary: #475569;     /* Secondary text */
+  --text-muted: #94a3b8;         /* Muted/placeholder */
+  --text-on-dark: #f4f4f5;       /* Text on dark bg */
+  --text-sidebar: #a1a1aa;       /* Sidebar nav text */
+  --text-sidebar-active: #ffffff;
+  
+  /* Borders */
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #2563eb;
+  
+  /* Status colors */
+  --status-new: #3b82f6;         /* Blue */
+  --status-assigned: #f59e0b;    /* Amber */
+  --status-inprogress: #8b5cf6;  /* Purple */
+  --status-resolved: #16a34a;    /* Green */
+  
+  /* Priority colors */
+  --priority-critical: #dc2626;  /* Red */
+  --priority-high: #ea580c;      /* Orange */
+  --priority-medium: #f59e0b;    /* Amber */
+  --priority-low: #6b7280;       /* Gray */
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  
+  /* Spacing rhythm */
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 64px;
+  --topbar-height: 60px;
+  
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
-:root {
-  color-scheme: light;
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — DARK MODE (CHARCOAL BLACK)
+═══════════════════════════════════════════ */
+.dark {
+  --brand-primary: #3b82f6;      /* Bright blue accent */
+  --brand-primary-light: #60a5fa;
+  --brand-accent: #f59e0b;
+  --brand-accent-dark: #fbbf24;
+  --brand-danger: #f87171;
+  --brand-success: #4ade80;
+  --brand-warning: #fb923c;
+  
+  --surface-bg: #121212;         /* True charcoal black page background */
+  --surface-card: #18181b;       /* Elevated charcoal card */
+  --surface-sidebar: #121212;    /* Seamless charcoal sidebar */
+  --surface-sidebar-hover: #222225;
+  --surface-input: #1e1e22;      /* Input background */
+  --surface-hover: #26262a;      /* Hover state */
+  --surface-muted: #1c1c1f;      /* Muted sections */
+  
+  --text-primary: #f4f4f5;       /* Neutral light text */
+  --text-secondary: #a1a1aa;     /* Neutral secondary text */
+  --text-muted: #71717a;         /* Neutral muted text */
+  --text-on-dark: #f4f4f5;       /* Text on dark bg */
+  --text-sidebar: #a1a1aa;       /* Neutral sidebar text */
+  --text-sidebar-active: #ffffff;
+  
+  --border-default: #27272a;     /* Charcoal border */
+  --border-strong: #3f3f46;      /* Stronger border */
+  --border-focus: #3b82f6;
+  
+  --status-new: #60a5fa;
+  --status-assigned: #fbbf24;
+  --status-inprogress: #a78bfa;
+  --status-resolved: #4ade80;
+  
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.6);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.7);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* ═══════════════════════════════════════════
+   TAILWIND THEME MAPPING
+═══════════════════════════════════════════ */
+@theme {
+  --color-bg: var(--surface-bg);
+  --color-card: var(--surface-card);
+  --color-sidebar: var(--surface-sidebar);
+  --color-sidebar-hover: var(--surface-sidebar-hover);
+  --color-hover: var(--surface-hover);
+  --color-input: var(--surface-input);
+  
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-dark: var(--text-on-dark);
+  --color-sidebar-text: var(--text-sidebar);
+  --color-sidebar-active: var(--text-sidebar-active);
+  
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-focus: var(--border-focus);
+  
+  --color-brand: var(--brand-primary);
+  --color-brand-light: var(--brand-primary-light);
+  --color-accent: var(--brand-accent);
+  --color-accent-dark: var(--brand-accent-dark);
+  --color-danger: var(--brand-danger);
+  --color-success: var(--brand-success);
+  --color-warning: var(--brand-warning);
+  
+  --color-status-new: var(--status-new);
+  --color-status-assigned: var(--status-assigned);
+  --color-status-inprogress: var(--status-inprogress);
+  --color-status-resolved: var(--status-resolved);
+  
+  --color-priority-critical: var(--priority-critical);
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   BASE STYLES
+═══════════════════════════════════════════ */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-body);
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
-/* Visible keyboard focus everywhere, not just on hover -- accessibility
- * floor from the design skill, easy to lose when hand-styling every
- * interactive element individually. */
-a, button, input, select, textarea {
-  outline-color: var(--color-signal);
+/* Selection */
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+  color: var(--text-primary);
 }
+
+/* Smooth transitions for theme switch */
+*, *::before, *::after {
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-fast);
+}
+/* Reset transition for elements that shouldn't animate */
+svg, img, canvas {
+  transition: none !important;
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS & KEYFRAMES
+═══════════════════════════════════════════ */
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes barGrow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Utility classes used by Toast, Modal, MiniBarChart */
+.animate-slide-in-right  { animation: slideInFromRight 0.3s ease-out forwards; }
+.animate-slide-in-bottom { animation: slideInFromBottom 0.25s ease-out forwards; }
+.animate-scale-in        { animation: scaleIn 0.2s ease-out forwards; }
+.animate-fade-in         { animation: fadeIn 0.2s ease-out forwards; }
+.animate-bar-grow        { animation: barGrow 0.5s ease-out forwards; transform-origin: bottom; }
+
+/* Tailwind v4 animate-in compat shim */
+.animate-in { animation-duration: 0.3s; animation-fill-mode: both; }
+.slide-in-from-right-5 { animation-name: slideInFromRight; }
+.slide-in-from-bottom-full { animation-name: slideInFromBottom; }
+.fade-in { animation-name: fadeIn; }
+.duration-300 { animation-duration: 0.3s; }
+.duration-200 { animation-duration: 0.2s; }
+

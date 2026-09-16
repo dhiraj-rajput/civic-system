@@ -21,6 +21,7 @@ class ComplaintCreate(BaseModel):
 
 class ComplaintOut(BaseModel):
     id: str
+    ai_analysis: Optional[dict] = None
     complaint_id: str
     citizen_id: str
     category: Category

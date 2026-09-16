@@ -34,6 +34,8 @@ app.include_router(auth.router)
 app.include_router(complaints.router)
 app.include_router(analytics.router)
 app.include_router(departments.router)
+from app.routers import ai_router
+app.include_router(ai_router.router)
 
 
 @app.get("/health")

@@ -1,11 +1,11 @@
-import { KeyRound } from "lucide-react";
+import { KeyRound, Mail, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import Button from "../components/ui/Button.jsx";
 import { Field, TextInput } from "../components/ui/Field.jsx";
-import Panel from "../components/ui/Panel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import AuthLayout from "../components/layout/AuthLayout.jsx";
 
 export default function Login() {
   const { login } = useAuth();
@@ -13,6 +13,7 @@ export default function Login() {
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,35 +26,78 @@ export default function Login() {
       const dest = location.state?.from?.pathname || `/${me.role}`;
       navigate(dest, { replace: true });
     } catch (err) {
-      setError(err.detail || "Login failed");
+      setError(err.detail || "Login failed. Please check your credentials.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-16">
-      <div className="mb-6 flex items-center gap-2">
-        <KeyRound size={18} className="text-signal" strokeWidth={2.25} />
-        <h1 className="font-display text-2xl font-semibold text-ink">Login</h1>
-      </div>
-      <Panel className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Email">
-            <TextInput type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+    <AuthLayout>
+      <div className="w-full">
+        <div className="mb-8">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Welcome back</h1>
+          <p className="mt-2 text-ink-secondary">Sign in to your civic portal account</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <Field label="Email address">
+            <TextInput 
+              type="email" 
+              required 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              leftIcon={Mail}
+              placeholder="you@example.com"
+            />
           </Field>
+          
           <Field label="Password">
-            <TextInput type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <TextInput 
+              type={showPassword ? "text" : "password"} 
+              required 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              leftIcon={KeyRound}
+              placeholder="••••••••"
+              rightElement={
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-ink-muted hover:text-ink transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
+            />
           </Field>
-          {error && <p className="text-sm text-brick">{error}</p>}
-          <Button type="submit" variant="accent" disabled={submitting} className="w-full">
-            {submitting ? "Logging in…" : "Login"}
+          
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center gap-2 text-ink-secondary cursor-pointer">
+              <input type="checkbox" className="rounded border-border text-brand focus:ring-focus bg-input" />
+              Remember me
+            </label>
+            <a href="#" className="font-medium text-brand hover:text-brand-light">Forgot password?</a>
+          </div>
+
+          {error && (
+            <div className="rounded-md bg-danger/10 p-3 text-sm text-danger border border-danger/20">
+              {error}
+            </div>
+          )}
+
+          <Button type="submit" variant="primary" isLoading={submitting} className="mt-2 w-full">
+            Sign in
           </Button>
         </form>
-      </Panel>
-      <p className="mt-4 text-center text-sm text-ink-soft">
-        No account? <Link to="/register" className="font-medium text-steel underline underline-offset-2">Register</Link>
-      </p>
-    </div>
+        
+        <div className="mt-8 flex items-center justify-center space-x-2 border-t border-border pt-6 text-sm">
+          <span className="text-ink-secondary">Don't have an account?</span>
+          <Link to="/register" className="font-medium text-brand hover:text-brand-light">
+            Create one
+          </Link>
+        </div>
+      </div>
+    </AuthLayout>
   );
 }

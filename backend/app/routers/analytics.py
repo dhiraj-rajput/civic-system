@@ -163,3 +163,72 @@ async def sla(sla_hours: int = 72):
         "open_count": open_count,
         "breaching_sla_now": breaching_now,
     }
+
+
+@router.get("/trend")
+async def trend(days: int = 30):
+    """Daily complaint volume and resolution trend for the past N days.
+
+    Returns one object per day with:
+      - date       : YYYY-MM-DD
+      - filed      : complaints created on that day
+      - resolved   : complaints resolved on that day
+      - open       : cumulative unresolved as of end-of-day (approximated)
+    Used by the Admin dashboard LineChart / AreaChart.
+    """
+    db = get_db()
+    now = datetime.utcnow()
+    start = now - timedelta(days=days)
+
+    # Aggregate filed per day
+    filed_pipeline = [
+        {"$match": {"created_at": {"$gte": start}}},
+        {
+            "$group": {
+                "_id": {
+                    "y": {"$year": "$created_at"},
+                    "m": {"$month": "$created_at"},
+                    "d": {"$dayOfMonth": "$created_at"},
+                },
+                "count": {"$sum": 1},
+            }
+        },
+    ]
+    # Aggregate resolved per day
+    resolved_pipeline = [
+        {"$match": {"resolved_at": {"$gte": start, "$ne": None}}},
+        {
+            "$group": {
+                "_id": {
+                    "y": {"$year": "$resolved_at"},
+                    "m": {"$month": "$resolved_at"},
+                    "d": {"$dayOfMonth": "$resolved_at"},
+                },
+                "count": {"$sum": 1},
+            }
+        },
+    ]
+
+    filed_raw = await db.complaints.aggregate(filed_pipeline).to_list(None)
+    resolved_raw = await db.complaints.aggregate(resolved_pipeline).to_list(None)
+
+    def key(doc):
+        g = doc["_id"]
+        return f"{g['y']:04d}-{g['m']:02d}-{g['d']:02d}"
+
+    filed_map = {key(d): d["count"] for d in filed_raw}
+    resolved_map = {key(d): d["count"] for d in resolved_raw}
+
+    # Build ordered day list
+    result = []
+    for i in range(days):
+        day = start + timedelta(days=i + 1)
+        label = day.strftime("%Y-%m-%d")
+        result.append({
+            "date": label,
+            "filed": filed_map.get(label, 0),
+            "resolved": resolved_map.get(label, 0),
+        })
+
+    return result
+

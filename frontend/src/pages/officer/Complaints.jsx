@@ -1,133 +1,312 @@
-import { ListChecks, Save } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Filter, Clock, CheckCircle, MessageSquare, Send, 
+  ChevronDown, AlertTriangle, Lightbulb, Droplets, Trash2, MoreHorizontal
+} from 'lucide-react';
+import { api } from '../../api/client.js';
+import { useToast } from '../../components/ui/Toast.jsx';
+import Button from '../../components/ui/Button.jsx';
+import { PriorityBadge } from '../../components/Badges.jsx';
 
-import { api } from "../../api/client.js";
-import Button from "../../components/ui/Button.jsx";
-import { Select, TextInput } from "../../components/ui/Field.jsx";
-import PageHeader from "../../components/ui/PageHeader.jsx";
-import Panel from "../../components/ui/Panel.jsx";
-import { PriorityBadge, StatusBadge } from "../../components/Badges.jsx";
-import { STATUSES } from "../../constants.js";
+const CATEGORY_ICONS = {
+  'Pothole': AlertTriangle,
+  'Garbage': Trash2,
+  'Streetlight': Lightbulb,
+  'Water Supply': Droplets,
+  'Other': MoreHorizontal,
+};
 
-export default function OfficerComplaints() {
-  const [complaints, setComplaints] = useState(null);
-  const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [expanded, setExpanded] = useState(null);
-  const [noteByCid, setNoteByCid] = useState({});
-  const [statusByCid, setStatusByCid] = useState({});
-  const [busyCid, setBusyCid] = useState(null);
-
-  function load() {
-    const params = new URLSearchParams();
-    if (statusFilter !== "All") params.set("status_filter", statusFilter);
-    if (categoryFilter !== "All") params.set("category", categoryFilter);
-    const qs = params.toString();
-    api
-      .get(`/complaints${qs ? `?${qs}` : ""}`)
-      .then(setComplaints)
-      .catch((e) => setError(e.detail || "Could not load queue"));
+function SLATimer({ createdAt, status }) {
+  if (status === 'Resolved') {
+    return <span className="text-xs font-medium text-success bg-success/10 px-2 py-1 rounded-full">Resolved</span>;
   }
+  
+  const created = new Date(createdAt);
+  const now = new Date();
+  const hoursElapsed = (now - created) / (1000 * 60 * 60);
+  const hoursLeft = 72 - hoursElapsed;
 
-  useEffect(load, [statusFilter, categoryFilter]);
-
-  const categories = useMemo(
-    () => (complaints ? Array.from(new Set(complaints.map((c) => c.category))) : []),
-    [complaints]
+  if (hoursLeft < 0) {
+    return (
+      <span className="text-xs font-bold text-danger bg-danger/10 px-2 py-1 rounded-full animate-pulse border border-danger/30">
+        OVERDUE {Math.abs(Math.floor(hoursLeft))}h
+      </span>
+    );
+  }
+  if (hoursLeft < 24) {
+    return (
+      <span className="text-xs font-medium text-warning-dark bg-warning/20 px-2 py-1 rounded-full">
+        Due in {Math.floor(hoursLeft)}h
+      </span>
+    );
+  }
+  
+  return (
+    <span className="text-xs font-medium text-ink-muted bg-surface-muted px-2 py-1 rounded-full border border-border">
+      {Math.floor(hoursLeft)}h remaining
+    </span>
   );
+}
 
-  async function saveUpdate(c) {
-    const note = noteByCid[c.id]?.trim();
-    const newStatus = statusByCid[c.id] || c.status;
-    setBusyCid(c.id);
+function OfficerComplaintCard({ complaint, onStatusChange, onCommentAdded }) {
+  const { toast } = useToast();
+  const [expanded, setExpanded] = useState(false);
+  const [comment, setComment] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  const Icon = CATEGORY_ICONS[complaint.category] || CATEGORY_ICONS['Other'];
+
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    if (newStatus === complaint.status) return;
+    
+    setIsUpdating(true);
     try {
-      if (note) {
-        await api.post(`/complaints/${c.id}/comments`, { text: note });
-      }
-      if (newStatus !== c.status) {
-        await api.patch(`/complaints/${c.id}/status`, { status: newStatus });
-      }
-      setNoteByCid((m) => ({ ...m, [c.id]: "" }));
-      load();
-    } catch (e) {
-      setError(e.detail || "Update failed");
+      await onStatusChange(complaint.id, newStatus);
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (err) {
+      toast.error('Failed to update status');
     } finally {
-      setBusyCid(null);
+      setIsUpdating(false);
     }
-  }
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    
+    setIsUpdating(true);
+    try {
+      await api.post(`/complaints/${complaint.id}/comments`, { content: comment });
+      toast.success('Comment added');
+      setComment('');
+      onCommentAdded();
+    } catch (err) {
+      toast.error('Failed to add comment');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const borderAccent = 
+    complaint.priority === 'Critical' ? 'border-l-danger' :
+    complaint.priority === 'High' ? 'border-l-warning' :
+    complaint.priority === 'Medium' ? 'border-l-status-assigned' : 'border-l-priority-low';
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <PageHeader icon={ListChecks} title="Assigned complaints" />
-
-      <div className="mt-4 flex gap-3">
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
-          <option>All</option>
-          {STATUSES.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </Select>
-        <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-auto">
-          <option>All</option>
-          {categories.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </Select>
+    <div className={`bg-card border border-border border-l-4 rounded-xl shadow-sm overflow-hidden flex flex-col transition-shadow hover:shadow-md ${borderAccent}`}>
+      
+      {/* Header */}
+      <div className="p-4 sm:p-5 flex items-start justify-between gap-4 border-b border-border bg-surface-muted/30">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <PriorityBadge priority={complaint.priority} />
+          <div className="font-mono text-sm font-medium text-ink bg-card px-2 py-0.5 rounded border border-border">
+            #{complaint.id.substring(0, 8)}
+          </div>
+          <div className="flex items-center gap-2 text-ink-secondary text-sm font-medium">
+            <Icon size={16} /> {complaint.category}
+          </div>
+        </div>
+        <SLATimer createdAt={complaint.created_at} status={complaint.status} />
       </div>
 
-      {error && <p className="mt-4 text-sm text-brick">{error}</p>}
-      {complaints && complaints.length === 0 && <p className="mt-6 text-sm text-ink-soft">No complaints assigned.</p>}
+      {/* Body */}
+      <div 
+        className="p-4 sm:p-5 cursor-pointer hover:bg-surface-hover/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className={`text-sm text-ink-secondary ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
+          {complaint.description}
+        </div>
+        <div className="text-xs text-ink-muted mt-3 flex items-center justify-between">
+          <span>📍 {complaint.address}</span>
+          <span className="text-brand flex items-center gap-1">
+            {expanded ? 'Show less' : 'Read more'} <ChevronDown size={14} className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </span>
+        </div>
+      </div>
 
-      <div className="mt-4 space-y-3">
-        {complaints?.map((c) => (
-          <Panel key={c.id} accent={c.status === "Assigned" ? "brick" : c.status === "Resolved" ? "civic" : "signal"}>
-            <button
-              onClick={() => setExpanded(expanded === c.id ? null : c.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left"
+      {/* Footer / Actions */}
+      <div className="p-4 sm:p-5 border-t border-border bg-surface-muted/10 flex flex-col sm:flex-row items-center gap-4">
+        
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <label className="text-xs font-medium text-ink-secondary">Status:</label>
+          <div className="relative">
+            <select
+              value={complaint.status}
+              onChange={handleStatusChange}
+              disabled={isUpdating}
+              className="appearance-none bg-card border border-border text-sm font-medium text-ink rounded-md pl-3 pr-8 py-1.5 focus:border-brand focus:ring-1 focus:ring-brand disabled:opacity-50 cursor-pointer"
             >
-              <div>
-                <p className="font-ref text-xs text-ink-soft">{c.complaint_id}</p>
-                <p className="mt-0.5 font-medium text-ink">{c.category}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <PriorityBadge priority={c.priority_label} />
-                <StatusBadge status={c.status} />
-              </div>
-            </button>
-            {expanded === c.id && (
-              <div className="border-t border-line px-4 py-4">
-                <p className="text-sm text-ink">{c.description}</p>
-                {c.address_text && <p className="mt-1 text-xs text-ink-soft">{c.address_text}</p>}
+              <option value="New" disabled>New</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+          </div>
+        </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-[160px_1fr_auto] sm:items-end">
-                  <div>
-                    <label className="block text-xs font-medium text-ink-soft">Update status</label>
-                    <Select
-                      value={statusByCid[c.id] || c.status}
-                      onChange={(e) => setStatusByCid((m) => ({ ...m, [c.id]: e.target.value }))}
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink-soft">Note (optional, logged as a comment)</label>
-                    <TextInput
-                      value={noteByCid[c.id] || ""}
-                      onChange={(e) => setNoteByCid((m) => ({ ...m, [c.id]: e.target.value }))}
-                    />
-                  </div>
-                  <Button variant="accent" size="sm" onClick={() => saveUpdate(c)} disabled={busyCid === c.id}>
-                    <Save size={13} strokeWidth={2} /> Save
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Panel>
-        ))}
+        <div className="w-px h-8 bg-border hidden sm:block"></div>
+
+        <form onSubmit={handleComment} className="flex-1 flex gap-2 w-full">
+          <div className="relative flex-1">
+            <MessageSquare size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <input
+              type="text"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add official comment or update..."
+              className="w-full bg-card border border-border rounded-md pl-9 pr-3 py-1.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand disabled:opacity-50"
+              disabled={isUpdating}
+            />
+          </div>
+          <Button type="submit" variant="primary" size="sm" disabled={!comment.trim() || isUpdating}>
+            <Send size={14} />
+          </Button>
+        </form>
+
       </div>
+    </div>
+  );
+}
+
+export default function OfficerComplaints() {
+  const { toast } = useToast();
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('Priority');
+
+  const fetchComplaints = async () => {
+    try {
+      const data = await api.get('/complaints');
+      setComplaints(data || []);
+    } catch (err) {
+      toast.error('Failed to load queue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+
+  const handleStatusChange = async (id, newStatus) => {
+    await api.patch(`/complaints/${id}/status`, { status: newStatus });
+    setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+  };
+
+  const filteredAndSorted = useMemo(() => {
+    let result = [...complaints];
+    
+    if (activeFilter !== 'All') {
+      result = result.filter(c => c.status === activeFilter);
+    }
+
+    result.sort((a, b) => {
+      if (sortBy === 'Priority') {
+        const scoreA = a.priority_score || 0;
+        const scoreB = b.priority_score || 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return new Date(a.created_at) - new Date(b.created_at);
+      }
+      if (sortBy === 'Newest') {
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
+      if (sortBy === 'Oldest') {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [complaints, activeFilter, sortBy]);
+
+  const FILTERS = ['All', 'Assigned', 'In Progress', 'Resolved'];
+  const SORTS = ['Priority', 'Newest', 'Oldest'];
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8 animate-in fade-in duration-500">
+      
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 border-b border-border pb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">Work Queue</h1>
+          <p className="text-ink-secondary text-sm mt-1 flex items-center gap-2">
+            <span className="font-medium text-ink bg-surface-muted px-2 py-0.5 rounded border border-border">
+              {filteredAndSorted.length}
+            </span> 
+            complaints matching filters
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Status Filter</label>
+            <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-lg border border-border">
+              {FILTERS.map(f => (
+                <button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                    activeFilter === f ? 'bg-card text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Sort By</label>
+            <div className="relative">
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none bg-card border border-border text-sm font-medium text-ink rounded-lg pl-3 pr-8 py-2 w-full sm:w-32 focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer shadow-sm"
+              >
+                {SORTS.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <Filter size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({length: 3}).map((_,i) => (
+              <div key={i} className="h-48 bg-card border border-border rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : filteredAndSorted.length === 0 ? (
+          <div className="bg-card border border-border border-dashed rounded-xl p-16 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle size={32} className="text-success" />
+            </div>
+            <h3 className="text-lg font-medium text-ink mb-1">You're all caught up!</h3>
+            <p className="text-sm text-ink-secondary">No complaints found for the current filters.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {filteredAndSorted.map(c => (
+              <OfficerComplaintCard 
+                key={c.id} 
+                complaint={c} 
+                onStatusChange={handleStatusChange}
+                onCommentAdded={fetchComplaints}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
