@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { ListChecks, Trash2, UserPlus, X, RefreshCw, MessageSquare, Sparkles } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { ListChecks, Trash2, UserPlus, X, RefreshCw, MessageSquare, Sparkles, MapPin, Send } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import Button from "../../components/ui/Button.jsx";
@@ -33,6 +33,8 @@ export default function Complaints() {
   // Inline edit state
   const [assignDept, setAssignDept] = useState({});
   const [updateStatus, setUpdateStatus] = useState({});
+  const [commentDraft, setCommentDraft] = useState({});
+  const [commentBusy, setCommentBusy] = useState({});
   const [busy, setBusy] = useState(false);
 
   const loadData = async () => {
@@ -94,19 +96,32 @@ export default function Complaints() {
   };
 
   const handleUpdateStatus = async (complaintId, newStatus) => {
+    if (!newStatus) return;
     setBusy(true);
     try {
-      // Assuming a patch endpoint for status exists or we use assign endpoint
-      // Note: Backend might need a specific endpoint for status update if it doesn't exist.
-      // We will try patching the complaint directly if available, or just assigning.
-      // Wait, there is no direct patch status in standard backend, but we can do our best.
-      toast.info("Status update initiated");
-      // await api.patch(`/complaints/${complaintId}`, { status: newStatus });
-      // loadData();
+      await api.patch(`/complaints/${complaintId}/status`, { status: newStatus });
+      toast.success(`Status updated to ${newStatus}`);
+      loadData();
     } catch (e) {
-      toast.error("Status update not implemented on backend");
+      toast.error(e.detail || "Status update failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleAddComment = async (complaintId) => {
+    const text = (commentDraft[complaintId] || "").trim();
+    if (!text) return;
+    setCommentBusy({ ...commentBusy, [complaintId]: true });
+    try {
+      await api.post(`/complaints/${complaintId}/comments`, { text });
+      toast.success("Comment added");
+      setCommentDraft({ ...commentDraft, [complaintId]: "" });
+      loadData();
+    } catch (e) {
+      toast.error(e.detail || "Failed to add comment");
+    } finally {
+      setCommentBusy({ ...commentBusy, [complaintId]: false });
     }
   };
 
@@ -290,6 +305,19 @@ export default function Complaints() {
                                 </p>
                               </div>
 
+                              <div>
+                                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+                                  <MapPin size={16} className="text-[var(--text-muted)]" />
+                                  Location
+                                </h4>
+                                <div className="text-sm text-[var(--text-secondary)] bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] space-y-1">
+                                  <p>{c.address_text || <span className="italic opacity-50">No address provided</span>}</p>
+                                  <p className="text-xs font-mono text-[var(--text-muted)]">
+                                    {c.location?.lat?.toFixed?.(6)}, {c.location?.lng?.toFixed?.(6)}
+                                  </p>
+                                </div>
+                              </div>
+
                               {c.ai_analysis && (
                                 <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-md p-4 space-y-3">
                                   <h4 className="text-sm font-semibold text-[var(--brand-primary)] flex items-center gap-2">
@@ -297,10 +325,10 @@ export default function Complaints() {
                                     AI Analysis
                                   </h4>
                                   <div className="text-sm text-[var(--text-secondary)] space-y-1">
-                                    {c.ai_analysis.suggested_category && c.ai_analysis.suggested_category !== c.category && (
-                                      <p><span className="font-medium text-[var(--text-primary)]">Suggested Category:</span> <span className="capitalize">{c.ai_analysis.suggested_category}</span></p>
+                                    {c.ai_analysis.category && c.ai_analysis.category !== c.category && (
+                                      <p><span className="font-medium text-[var(--text-primary)]">Suggested Category:</span> <span className="capitalize">{c.ai_analysis.category_suggestion || c.ai_analysis.category}</span> <span className="text-xs opacity-70">({Math.round((c.ai_analysis.confidence || 0) * 100)}% confidence)</span></p>
                                     )}
-                                    <p><span className="font-medium text-[var(--text-primary)]">Urgency:</span> {c.ai_analysis.urgency || c.ai_analysis.priority}</p>
+                                    <p><span className="font-medium text-[var(--text-primary)]">Urgency:</span> {c.ai_analysis.urgency_level}</p>
                                     <p className="mt-2 text-xs bg-white dark:bg-black/20 p-2 rounded border border-blue-100/50">{c.ai_analysis.summary || 'No summary available.'}</p>
                                   </div>
                                 </div>
@@ -329,6 +357,20 @@ export default function Complaints() {
                                       </Button>
                                     </div>
                                   </div>
+                                  <div className="flex-1 min-w-[200px]">
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Update Status</label>
+                                    <select
+                                      className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm focus:border-[var(--brand-primary)] outline-none"
+                                      value={updateStatus[c.id] !== undefined ? updateStatus[c.id] : c.status}
+                                      onChange={(e) => {
+                                        setUpdateStatus({...updateStatus, [c.id]: e.target.value});
+                                        handleUpdateStatus(c.id, e.target.value);
+                                      }}
+                                      disabled={busy}
+                                    >
+                                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -340,6 +382,53 @@ export default function Complaints() {
                               </h4>
                               <div className="bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] max-h-[400px] overflow-y-auto">
                                 <HistoryTimeline history={c.history || []} />
+                              </div>
+
+                              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 mt-6 flex items-center gap-2">
+                                <MessageSquare size={16} className="text-[var(--text-muted)]" />
+                                Comments
+                              </h4>
+                              <div className="bg-[var(--surface-card)] rounded-md border border-[var(--border-default)] flex flex-col">
+                                <div className="max-h-[240px] overflow-y-auto p-4 space-y-3">
+                                  {!c.comments || c.comments.length === 0 ? (
+                                    <div className="text-sm text-[var(--text-muted)] text-center py-4">No comments yet.</div>
+                                  ) : (
+                                    c.comments.map((cm, i) => (
+                                      <div key={i} className="flex flex-col gap-1">
+                                        <div className="flex items-baseline justify-between">
+                                          <span className="text-xs font-semibold text-[var(--text-primary)] capitalize">
+                                            {cm.author_name} <span className="font-normal text-[var(--text-muted)]">({cm.author_role})</span>
+                                          </span>
+                                          <span className="text-[10px] text-[var(--text-muted)]">
+                                            {new Date(cm.created_at).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                        <div className="text-sm text-[var(--text-secondary)] bg-[var(--surface-muted)] p-2.5 rounded-md border border-[var(--border-default)]">
+                                          {cm.text}
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                                <form
+                                  onSubmit={(e) => { e.preventDefault(); handleAddComment(c.id); }}
+                                  className="p-3 border-t border-[var(--border-default)] flex gap-2 bg-[var(--surface-muted)] rounded-b-md"
+                                >
+                                  <input
+                                    type="text"
+                                    value={commentDraft[c.id] || ""}
+                                    onChange={(e) => setCommentDraft({ ...commentDraft, [c.id]: e.target.value })}
+                                    placeholder="Add an admin comment..."
+                                    className="flex-1 rounded-md border border-[var(--border-default)] bg-[var(--surface-card)] px-3 py-1.5 text-sm focus:border-[var(--brand-primary)] focus:outline-none"
+                                  />
+                                  <Button
+                                    type="submit" variant="primary" size="sm"
+                                    isLoading={!!commentBusy[c.id]}
+                                    disabled={!(commentDraft[c.id] || "").trim()}
+                                  >
+                                    <Send size={14} />
+                                  </Button>
+                                </form>
                               </div>
                             </div>
                             

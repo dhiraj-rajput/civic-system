@@ -29,7 +29,7 @@ export default function Analytics() {
     try {
       const [sumData, slaData, trendData, hotData, agingData] = await Promise.all([
         api.get("/analytics/summary"),
-        api.get(`/analytics/sla?target_hours=${slaThreshold}`),
+        api.get(`/analytics/sla?sla_hours=${slaThreshold}`),
         api.get("/analytics/trend?days=30"),
         api.get("/analytics/hotspots"),
         api.get(`/analytics/aging?sla_hours=${slaThreshold}`)
@@ -52,7 +52,7 @@ export default function Analytics() {
   }, [loadData]);
 
   // SLA Circle Math (Radius = 45, Circumference = 282.7)
-  const compliancePercent = sla ? Math.round(sla.compliance_percent || 0) : 0;
+  const compliancePercent = sla ? Math.round(sla.sla_compliance_pct || 0) : 0;
   let slaColor = "var(--brand-danger)";
   if (compliancePercent > 80) slaColor = "var(--brand-success)";
   else if (compliancePercent >= 60) slaColor = "var(--brand-warning)";
@@ -137,15 +137,15 @@ export default function Analytics() {
             </div>
             <div>
               <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Within SLA</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--brand-success)]">{sla?.within_sla ?? 0}</div>
+              <div className="text-2xl font-semibold mt-1 text-[var(--brand-success)]">{sla?.resolved_within_sla ?? 0}</div>
             </div>
             <div>
               <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Breaching Now</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--brand-danger)]">{sla?.breaching_now ?? 0}</div>
+              <div className="text-2xl font-semibold mt-1 text-[var(--brand-danger)]">{sla?.breaching_sla_now ?? 0}</div>
             </div>
             <div>
               <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Open Count</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--text-primary)]">{sla?.total_open ?? 0}</div>
+              <div className="text-2xl font-semibold mt-1 text-[var(--text-primary)]">{sla?.open_count ?? 0}</div>
             </div>
           </div>
           
@@ -270,7 +270,7 @@ export default function Analytics() {
                         <td className="py-2 pr-2 font-mono text-xs">{a.complaint_id}</td>
                         <td className="py-2 pr-2 capitalize">{a.category}</td>
                         <td className="py-2 pr-2 font-medium">{Math.round(hrs)}h</td>
-                        <td className="py-2 pr-2"><PriorityBadge priority={a.priority || 'Low'} /></td>
+                        <td className="py-2 pr-2"><PriorityBadge priority={a.priority_label || 'Low'} /></td>
                         <td className="py-2 text-xs truncate max-w-[100px]">{a.assigned_to || 'Unassigned'}</td>
                       </tr>
                     );

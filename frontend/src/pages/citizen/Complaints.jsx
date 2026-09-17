@@ -31,7 +31,7 @@ function ComplaintCard({ complaint, isExpanded, onToggle, onCommentAdded }) {
     
     setIsSubmitting(true);
     try {
-      await api.post(`/complaints/${complaint.id}/comments`, { content: commentText });
+      await api.post(`/complaints/${complaint.id}/comments`, { text: commentText });
       toast.success('Comment added');
       setCommentText('');
       onCommentAdded();
@@ -60,7 +60,7 @@ function ComplaintCard({ complaint, isExpanded, onToggle, onCommentAdded }) {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <PriorityBadge priority={complaint.priority} />
+          <PriorityBadge priority={complaint.priority_label} />
           <StatusBadge status={complaint.status} />
           <div className="text-sm text-ink-muted w-24 text-right hidden sm:block">{formattedDate}</div>
           <div className="text-ink-muted ml-2">
@@ -75,7 +75,14 @@ function ComplaintCard({ complaint, isExpanded, onToggle, onCommentAdded }) {
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-ink">Description</h4>
             <p className="text-sm text-ink-secondary whitespace-pre-wrap">{complaint.description}</p>
-            <div className="text-xs text-ink-muted mt-2">📍 {complaint.address}</div>
+            <div className="text-xs text-ink-muted mt-2">
+              📍 {complaint.address_text || 'No address provided'}
+              {complaint.location && (
+                <span className="font-mono ml-1 opacity-70">
+                  ({complaint.location.lat?.toFixed?.(5)}, {complaint.location.lng?.toFixed?.(5)})
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -105,13 +112,15 @@ function ComplaintCard({ complaint, isExpanded, onToggle, onCommentAdded }) {
                     complaint.comments.map((c, i) => (
                       <div key={i} className="flex flex-col gap-1">
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs font-semibold text-ink">{c.user_name}</span>
+                          <span className="text-xs font-semibold text-ink capitalize">
+                            {c.author_name} <span className="font-normal text-ink-muted">({c.author_role})</span>
+                          </span>
                           <span className="text-[10px] text-ink-muted">
                             {new Date(c.created_at).toLocaleDateString()}
                           </span>
                         </div>
                         <div className="text-sm text-ink-secondary bg-surface-muted p-2.5 rounded-md border border-border">
-                          {c.content}
+                          {c.text}
                         </div>
                       </div>
                     ))

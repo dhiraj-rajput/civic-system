@@ -148,14 +148,14 @@ export default function SubmitComplaint() {
             
             <div className="text-ink-secondary">Priority</div>
             <div className="text-right">
-              <PriorityBadge priority={submittedData.priority} />
+              <PriorityBadge priority={submittedData.priority_label} />
             </div>
           </div>
           
-          {submittedData.ai_summary && (
+          {submittedData.ai_analysis?.summary && (
             <div className="bg-brand/5 border border-brand/20 p-4 rounded-lg">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-brand mb-1">AI Summary</h3>
-              <p className="text-sm text-ink-secondary">{submittedData.ai_summary}</p>
+              <p className="text-sm text-ink-secondary">{submittedData.ai_analysis.summary}</p>
             </div>
           )}
           

@@ -128,12 +128,12 @@ export default function OfficerDashboard() {
               <div className="divide-y divide-border">
                 {priorityQueue.map(c => (
                   <div key={c.id} className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-hover transition-colors ${
-                    c.priority === 'Critical' ? 'border-l-4 border-l-danger' :
-                    c.priority === 'High' ? 'border-l-4 border-l-warning' : ''
+                    c.priority_label === 'Critical' ? 'border-l-4 border-l-danger' :
+                    c.priority_label === 'High' ? 'border-l-4 border-l-warning' : ''
                   }`}>
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-24">
-                        <PriorityBadge priority={c.priority} />
+                        <PriorityBadge priority={c.priority_label} />
                       </div>
                       <div className="font-mono text-xs text-ink-muted shrink-0">#{c.id.substring(0, 8)}</div>
                       <div className="font-medium text-ink truncate max-w-[200px]">{c.category}</div>

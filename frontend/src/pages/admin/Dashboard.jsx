@@ -22,7 +22,7 @@ export default function Dashboard() {
     try {
       const [sumData, slaData, trendData, hotData] = await Promise.all([
         api.get("/analytics/summary"),
-        api.get("/analytics/sla?target_hours=72"), // assuming a default 72h
+        api.get("/analytics/sla?sla_hours=72"),
         api.get("/analytics/trend?days=30"),
         api.get("/analytics/hotspots")
       ]);

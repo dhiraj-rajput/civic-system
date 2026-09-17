@@ -19,32 +19,24 @@ class ComplaintCreate(BaseModel):
     address_text: Optional[str] = None
 
 
-class ComplaintOut(BaseModel):
-    id: str
-    ai_analysis: Optional[dict] = None
-    complaint_id: str
-    citizen_id: str
-    category: Category
-    description: str
-    location: Location
-    address_text: Optional[str] = None
-    status: Status = "New"
-    priority_score: float = 0.0
-    priority_label: str = "Low"
-    assigned_to: Optional[str] = None
-    is_duplicate: bool = False
-    duplicate_group_id: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    resolved_at: Optional[datetime] = None
-
-
 class StatusUpdate(BaseModel):
     status: Status
 
 
 class CommentCreate(BaseModel):
     text: str
+
+
+class CommentOut(BaseModel):
+    """One comment on a complaint. `author_name` is resolved server-side from
+    the authenticated user at post time (see routers/complaints.py
+    add_comment) so the UI never has to look up a display name separately."""
+
+    author_id: str
+    author_name: str
+    author_role: str
+    text: str
+    created_at: datetime
 
 
 class AssignUpdate(BaseModel):
@@ -64,6 +56,28 @@ class HistoryEntry(BaseModel):
     event: Literal["created", "status_changed", "assigned", "comment_added"]
     detail: str
     at: datetime
+
+
+class ComplaintOut(BaseModel):
+    id: str
+    ai_analysis: Optional[dict] = None
+    complaint_id: str
+    citizen_id: str
+    category: Category
+    description: str
+    location: Location
+    address_text: Optional[str] = None
+    status: Status = "New"
+    priority_score: float = 0.0
+    priority_label: str = "Low"
+    assigned_to: Optional[str] = None
+    is_duplicate: bool = False
+    duplicate_group_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: Optional[datetime] = None
+    comments: list[CommentOut] = []
+    history: list[HistoryEntry] = []
 
 
 class ComplaintTrack(BaseModel):

@@ -7,13 +7,14 @@ import { api } from '../../api/client.js';
 import { useToast } from '../../components/ui/Toast.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { PriorityBadge } from '../../components/Badges.jsx';
+import HistoryTimeline from '../../components/HistoryTimeline.jsx';
 
 const CATEGORY_ICONS = {
-  'Pothole': AlertTriangle,
-  'Garbage': Trash2,
-  'Streetlight': Lightbulb,
-  'Water Supply': Droplets,
-  'Other': MoreHorizontal,
+  pothole: AlertTriangle,
+  garbage: Trash2,
+  streetlight: Lightbulb,
+  water_supply: Droplets,
+  other: MoreHorizontal,
 };
 
 function SLATimer({ createdAt, status }) {
@@ -77,7 +78,7 @@ function OfficerComplaintCard({ complaint, onStatusChange, onCommentAdded }) {
     
     setIsUpdating(true);
     try {
-      await api.post(`/complaints/${complaint.id}/comments`, { content: comment });
+      await api.post(`/complaints/${complaint.id}/comments`, { text: comment });
       toast.success('Comment added');
       setComment('');
       onCommentAdded();
@@ -89,9 +90,9 @@ function OfficerComplaintCard({ complaint, onStatusChange, onCommentAdded }) {
   };
 
   const borderAccent = 
-    complaint.priority === 'Critical' ? 'border-l-danger' :
-    complaint.priority === 'High' ? 'border-l-warning' :
-    complaint.priority === 'Medium' ? 'border-l-status-assigned' : 'border-l-priority-low';
+    complaint.priority_label === 'Critical' ? 'border-l-danger' :
+    complaint.priority_label === 'High' ? 'border-l-warning' :
+    complaint.priority_label === 'Medium' ? 'border-l-status-assigned' : 'border-l-priority-low';
 
   return (
     <div className={`bg-card border border-border border-l-4 rounded-xl shadow-sm overflow-hidden flex flex-col transition-shadow hover:shadow-md ${borderAccent}`}>
@@ -99,7 +100,7 @@ function OfficerComplaintCard({ complaint, onStatusChange, onCommentAdded }) {
       {/* Header */}
       <div className="p-4 sm:p-5 flex items-start justify-between gap-4 border-b border-border bg-surface-muted/30">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <PriorityBadge priority={complaint.priority} />
+          <PriorityBadge priority={complaint.priority_label} />
           <div className="font-mono text-sm font-medium text-ink bg-card px-2 py-0.5 rounded border border-border">
             #{complaint.id.substring(0, 8)}
           </div>
@@ -119,11 +120,40 @@ function OfficerComplaintCard({ complaint, onStatusChange, onCommentAdded }) {
           {complaint.description}
         </div>
         <div className="text-xs text-ink-muted mt-3 flex items-center justify-between">
-          <span>📍 {complaint.address}</span>
+          <span>📍 {complaint.address_text || 'No address provided'}</span>
           <span className="text-brand flex items-center gap-1">
             {expanded ? 'Show less' : 'Read more'} <ChevronDown size={14} className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </span>
         </div>
+
+        {expanded && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+            <div>
+              <h5 className="text-xs font-semibold text-ink-secondary uppercase tracking-wide mb-2">Timeline</h5>
+              <div className="bg-surface-muted/40 rounded-md border border-border p-2 max-h-[220px] overflow-y-auto">
+                <HistoryTimeline history={complaint.history || []} />
+              </div>
+            </div>
+            <div>
+              <h5 className="text-xs font-semibold text-ink-secondary uppercase tracking-wide mb-2">Comments</h5>
+              <div className="bg-surface-muted/40 rounded-md border border-border p-3 max-h-[220px] overflow-y-auto space-y-2">
+                {!complaint.comments || complaint.comments.length === 0 ? (
+                  <div className="text-xs text-ink-muted text-center py-4">No comments yet.</div>
+                ) : (
+                  complaint.comments.map((c, i) => (
+                    <div key={i} className="text-xs">
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-semibold text-ink capitalize">{c.author_name} ({c.author_role})</span>
+                        <span className="text-ink-muted">{new Date(c.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-ink-secondary bg-card p-2 rounded border border-border mt-0.5">{c.text}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer / Actions */}

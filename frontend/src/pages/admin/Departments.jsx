@@ -44,8 +44,16 @@ export default function Departments() {
     loadData();
   }, []);
 
+  const takenCategories = departments.map(d => d.category);
+  const availableCategories = CATEGORIES.filter(c => !takenCategories.includes(c.value));
+  const allCategoriesTaken = availableCategories.length === 0;
+
   const openAddModal = () => {
-    setForm({ name: "", category: "other", description: "" });
+    if (allCategoriesTaken) {
+      toast.info("Every category already has a department — edit an existing one instead.");
+      return;
+    }
+    setForm({ name: "", category: availableCategories[0].value, description: "" });
     setEditingId(null);
     setIsModalOpen(true);
   };
@@ -89,10 +97,22 @@ export default function Departments() {
           <Building2 size={24} className="text-[var(--brand-primary)]" />
           Department Management
         </h1>
-        <Button onClick={openAddModal} className="gap-2">
+        <Button onClick={openAddModal} className="gap-2" disabled={allCategoriesTaken} title={allCategoriesTaken ? "All categories already have a department — edit one instead" : undefined}>
           <Plus size={16} /> Add Department
         </Button>
       </div>
+
+      {allCategoriesTaken && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-md p-4 flex items-start gap-3">
+          <AlertCircle size={20} className="text-[var(--brand-warning)] shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--brand-warning)]">All categories are mapped</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Every complaint category already routes to a department. Edit an existing department below to rename it or change its description — a category can only route to one department at a time.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Auto-assign Info Panel */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-md p-4 flex items-start gap-3">
@@ -185,8 +205,12 @@ export default function Departments() {
               className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 focus:outline-none focus:border-[var(--brand-primary)] capitalize"
               value={form.category}
               onChange={(e) => setForm({...form, category: e.target.value})}
+              disabled={!editingId && availableCategories.length === 0}
             >
-              {CATEGORIES.map((c) => (
+              {(editingId
+                ? CATEGORIES.filter(c => !takenCategories.includes(c.value) || c.value === form.category)
+                : availableCategories
+              ).map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>

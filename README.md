@@ -36,15 +36,19 @@ docker compose down -v     # stop AND wipe database (WARNING: deletes all data)
 | **Swagger / API Docs** | http://localhost:8000/docs |
 | **Health check** | http://localhost:8000/health |
 
-### Step 4 — Create the first Admin (one-time only)
+### Step 4 — Seed demo data & users (Recommended)
+Populate the database with all roles (Admin, Officers, Citizens) and 12 sample complaints with a single command:
 ```bash
-curl -X POST http://localhost:8000/auth/bootstrap-admin \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Admin", "email": "admin@city.gov", "password": "Admin@1234"}'
-```
-Or visit **http://localhost:5173/bootstrap-admin** in the browser.
+# Run from project root using Bun:
+bun scripts/seed.mjs
 
-> ⚠️ This works exactly **once**. After the first admin exists it permanently returns 403.
+# Or from frontend:
+cd frontend && bun run seed
+
+# Or inside Docker:
+docker compose exec backend python seed.py
+```
+> 💡 This automatically bootstraps the admin (`admin@city.gov` / `Admin@1234`), 5 officers across 5 departments, 3 citizens, and 12 realistic complaints across all statuses and priorities!
 
 ### View logs per service
 ```bash
@@ -381,17 +385,31 @@ Full interactive docs: **http://localhost:8000/docs**
 
 ---
 
-## 🌱 Seed Sample Data
+## 🌱 Database Seeding (Users, Officers, Complaints)
 
+Whenever you wipe or recreate your Docker MongoDB container (`docker compose down -v`), run the seeder script:
+
+```bash
+# Using Bun (from project root):
+bun scripts/seed.mjs
+
+# Or from the frontend directory:
+cd frontend && bun run seed
+
+# Or inside the Docker backend container (Python):
+docker compose exec backend python seed.py
+```
+
+This populates:
+- 👑 **Admin**: `admin@city.gov` / `Admin@1234`
+- 👷 **5 Officers**: `Officer@1234` across all 5 municipal departments
+- 🧑‍💼 **3 Citizens**: `Citizen@1234` (`citizen@example.com`, `jane@example.com`, `carlos@example.com`)
+- 📋 **12 Realistic Complaints**: covering all statuses (`New`, `Assigned`, `In Progress`, `Resolved`), priorities (`Critical`, `High`, `Medium`, `Low`), duplicate pairs, and SLA aging data.
+
+### Optional: NYC 311 Open Data Import
 ```bash
 # 100 complaints from NYC 311 live API
 python scripts/seed_from_311.py --limit 100
-
-# Last week only
-python scripts/seed_from_311.py --limit 500 --days 7
-
-# Dry run — no writes
-python scripts/seed_from_311.py --dry-run --limit 20
 
 # Use bundled sample (no internet needed)
 python scripts/seed_from_311.py --sample-file scripts/sample_311.json

@@ -49,6 +49,8 @@ def _to_out(doc: dict) -> ComplaintOut:
         updated_at=doc["updated_at"],
         resolved_at=doc.get("resolved_at"),
         ai_analysis=doc.get("ai_analysis"),
+        comments=doc.get("comments", []),
+        history=doc.get("history", []),
     )
 
 
@@ -142,10 +144,13 @@ async def create_complaint(
 
     ai_result = analyze_complaint(payload.description)
     doc["ai_analysis"] = {
-        "category_suggestion": ai_result["category"],
+        "category": ai_result["category"],
+        "category_suggestion": ai_result["category_suggestion"],
+        "confidence": ai_result["confidence"],
         "urgency_level": ai_result["urgency_level"],
         "summary": ai_result["summary"],
-        "location_hints": ai_result["location_hints"]
+        "location_hints": ai_result["location_hints"],
+        "duration": ai_result.get("duration"),
     }
     
     score, label = await score_complaint(
@@ -311,7 +316,13 @@ async def add_comment(
     _require_view(doc, current_user)
 
     now = datetime.utcnow()
-    comment = {"author_id": current_user["id"], "author_role": current_user["role"], "text": payload.text, "created_at": now}
+    comment = {
+        "author_id": current_user["id"],
+        "author_name": current_user["name"],
+        "author_role": current_user["role"],
+        "text": payload.text,
+        "created_at": now,
+    }
     history_entry = {
         "event": "comment_added",
         "detail": f"{current_user['role']} commented",

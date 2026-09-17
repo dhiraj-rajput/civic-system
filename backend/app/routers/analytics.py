@@ -51,12 +51,14 @@ async def summary():
 @router.get("/aging")
 async def aging(sla_hours: int = 72):
     db = get_db()
-    cutoff = datetime.utcnow() - timedelta(hours=sla_hours)
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=sla_hours)
     docs = await db.complaints.find(
         {"status": {"$ne": "Resolved"}, "created_at": {"$lt": cutoff}}
     ).sort("created_at", 1).to_list(200)
     for d in docs:
         d["id"] = str(d.pop("_id"))
+        d["hours_elapsed"] = round((now - d["created_at"]).total_seconds() / 3600, 1)
     return docs
 
 

@@ -38,9 +38,9 @@ export default function AISuggestion({ suggestion, onAccept, onDismiss }) {
           </span>
           <span className="text-ink-muted">•</span>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            suggestion.urgency_level === 'High' || suggestion.urgency_level === 'Critical' 
+            suggestion.urgency_level === 'HIGH' || suggestion.urgency_level === 'CRITICAL' 
               ? 'bg-danger/10 text-danger' : 
-            suggestion.urgency_level === 'Medium' 
+            suggestion.urgency_level === 'MEDIUM' 
               ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
           }`}>
             {suggestion.urgency_level} Priority
