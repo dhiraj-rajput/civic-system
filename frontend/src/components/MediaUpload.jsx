@@ -9,7 +9,7 @@ export default function MediaUpload({
   onUploadComplete = null,
   maxFiles = 6,
   label = "Upload Evidence (Images & Videos)",
-  helperText = "Attach multiple photos or video clips (Max: 15MB each)",
+  helperText = "Attach photos (max 15MB) or video clips (max 50MB, up to 6 files)",
 }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -21,8 +21,23 @@ export default function MediaUpload({
     if (!files.length) return;
 
     if (mediaUrls.length + files.length > maxFiles) {
-      toast.error(`You can upload a maximum of ${maxFiles} files.`);
+      toast.error(`You can upload a maximum of ${maxFiles} files in total.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
+    }
+
+    // Pre-flight file size checks
+    for (const file of files) {
+      const isVid = file.type.startsWith("video/") || file.name.match(/\.(mp4|webm|mov|mkv)$/i);
+      const maxSize = isVid ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
+      const maxMb = isVid ? 50 : 15;
+
+      if (file.size > maxSize) {
+        const fileMb = (file.size / (1024 * 1024)).toFixed(1);
+        toast.error(`"${file.name}" is too large (${fileMb}MB). Maximum allowed is ${maxMb}MB.`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
     }
 
     setUploading(true);
@@ -46,7 +61,7 @@ export default function MediaUpload({
       }
       toast.success(`${files.length} file(s) uploaded successfully.`);
     } catch (err) {
-      toast.error(err.detail || "Failed to upload file. Check file size limits.");
+      toast.error(err.detail || "Failed to upload file. Please ensure file is under the size limits.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

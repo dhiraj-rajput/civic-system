@@ -437,10 +437,19 @@ export default function SubmitComplaint() {
             {aiResult && (
               <AISuggestion 
                 suggestion={aiResult} 
-                onApplyCategory={(cat) => {
-                  setSelectedCategory(cat);
-                  toast.success(`Category updated to ${cat}`);
+                onAccept={(rawCat) => {
+                  const target = (rawCat || '').toLowerCase().trim();
+                  const matched = categories.find(c => 
+                    c.id.toLowerCase() === target || 
+                    c.label.toLowerCase() === target ||
+                    target.includes(c.id.toLowerCase()) ||
+                    c.id.toLowerCase().includes(target)
+                  );
+                  const finalCat = matched ? matched.id : target;
+                  setSelectedCategory(finalCat);
+                  toast.success(`Category updated to ${matched ? matched.label : finalCat}`);
                 }}
+                onDismiss={() => setAiResult(null)}
               />
             )}
           </div>

@@ -8,8 +8,8 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-matroska"}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024       # 5 MB
-MAX_VIDEO_SIZE = 25 * 1024 * 1024     # 25 MB
+MAX_IMAGE_SIZE = 15 * 1024 * 1024     # 15 MB
+MAX_VIDEO_SIZE = 50 * 1024 * 1024     # 50 MB
 
 
 async def _read_file_safely(file: UploadFile, max_size: int) -> bytes:
@@ -24,7 +24,7 @@ async def _read_file_safely(file: UploadFile, max_size: int) -> bytes:
         if total_bytes > max_size:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File exceeds maximum permitted size of {max_size / (1024 * 1024):.1f}MB"
+                detail=f"File exceeds maximum permitted size of {max_size / (1024 * 1024):.0f}MB. Please upload a smaller file."
             )
         chunks.append(chunk)
     return b"".join(chunks)

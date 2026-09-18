@@ -429,16 +429,49 @@ export default function ComplaintDetail() {
             )}
           </Panel>
 
-          {/* Citizen Attached Photos & Videos */}
-          {complaint.media_urls && complaint.media_urls.length > 0 && (
-            <Panel className="p-6 space-y-3">
-              <h3 className="text-base font-bold text-ink flex items-center gap-2 border-b border-border pb-3">
-                <Layers size={18} className="text-amber-400" />
-                Citizen Attached Media Evidence
-              </h3>
-              <MediaGallery mediaUrls={complaint.media_urls} title="Uploaded Photos & Videos" />
-            </Panel>
-          )}
+          {/* Media Evidence or Official NYC 311 Telemetry Banner */}
+          {(() => {
+            const validMediaUrls = (complaint.media_urls || []).filter(
+              (url) => !url.includes("sample_1.jpg") && !url.includes("placeholder") && !url.includes("fake")
+            );
+
+            if (validMediaUrls.length > 0) {
+              return (
+                <Panel className="p-6 space-y-3">
+                  <h3 className="text-base font-bold text-ink flex items-center gap-2 border-b border-border pb-3">
+                    <Layers size={18} className="text-amber-400" />
+                    Citizen Attached Media Evidence
+                  </h3>
+                  <MediaGallery mediaUrls={validMediaUrls} title="Uploaded Photos & Videos" />
+                </Panel>
+              );
+            }
+
+            if (isNYC311) {
+              return (
+                <Panel className="p-5 sm:p-6 border border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/40 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5">
+                    <div className="flex items-center gap-2 text-slate-800 dark:text-amber-400 font-bold text-sm">
+                      <ShieldCheck size={18} className="text-amber-500" />
+                      <span>NYC 311 Municipal Telemetry Record</span>
+                    </div>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-400/15 text-amber-600 dark:text-amber-300 border border-amber-400/30">
+                      Open Data Feed
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-secondary leading-relaxed">
+                    This complaint was ingested directly from the official City of New York Open Data portal. Municipal agency dispatch systems (<strong>{complaint.agency || "NYC Municipal Services"}</strong>) maintain inspection photographs internally and do not expose media files to the public open data feed.
+                  </p>
+                  <div className="flex items-center gap-2 text-[11px] text-ink-muted pt-1">
+                    <CheckCircle2 size={13} className="text-emerald-500" />
+                    <span>Official Municipal Work Order • Verified under Socrata #{complaint.nyc311_unique_key || complaint.id}</span>
+                  </div>
+                </Panel>
+              );
+            }
+
+            return null;
+          })()}
 
           {/* Resolution Evidence (if resolved) */}
           {complaint.resolution_evidence && (

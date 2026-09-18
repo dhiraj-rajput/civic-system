@@ -25,10 +25,13 @@ export default function TrackComplaint() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Load user's recent complaints for 1-click tracking
+  const basePath = user?.role ? `/${user.role}/track` : '/citizen/track';
+  const complaintsBasePath = user?.role ? `/${user.role}/complaints` : '/citizen/complaints';
+
+  // Load recent complaints for 1-click tracking
   useEffect(() => {
-    if (user?.role === "citizen") {
-      api.get("/complaints?limit=6")
+    if (user) {
+      api.get("/complaints?limit=10")
         .then((res) => setMyRecentComplaints(res || []))
         .catch(() => {});
     }
@@ -66,13 +69,13 @@ export default function TrackComplaint() {
   const handleSearch = (e) => {
     e.preventDefault();
     if (!searchId.trim()) return;
-    navigate(`/citizen/track/${encodeURIComponent(searchId.trim())}`);
+    navigate(`${basePath}/${encodeURIComponent(searchId.trim())}`);
     fetchComplaint(searchId.trim());
   };
 
   const handleQuickSelect = (complaintId) => {
     setSearchId(complaintId);
-    navigate(`/citizen/track/${encodeURIComponent(complaintId)}`);
+    navigate(`${basePath}/${encodeURIComponent(complaintId)}`);
     fetchComplaint(complaintId);
   };
 
@@ -124,34 +127,86 @@ export default function TrackComplaint() {
           </div>
         </form>
 
-        {/* Quick select chips from recent complaints */}
-        {myRecentComplaints.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border/60">
-            <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-2">
-              Your Recent Submissions (Quick Select):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {myRecentComplaints.map((c) => (
-                <button
-                  key={c.id || c.complaint_id}
-                  type="button"
-                  onClick={() => handleQuickSelect(c.complaint_id || c.id)}
-                  className={`text-xs px-2.5 py-1 rounded-lg border transition-all text-left flex items-center gap-1.5 ${
-                    searchId === (c.complaint_id || c.id)
-                      ? "border-brand bg-brand/10 text-brand font-semibold"
-                      : "border-border bg-surface hover:bg-surface-hover text-ink"
-                  }`}
-                >
-                  <span className="font-mono font-bold text-[11px]">#{c.complaint_id}</span>
-                  <span className="text-ink-muted capitalize text-[11px]">({c.category})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </Panel>
 
-      {/* Error Message */}
+      {/* Short History of Recently Uploaded Complaints (No Description) */}
+      {myRecentComplaints.length > 0 && (
+        <Panel className="p-5 sm:p-6 shadow-sm border border-border space-y-3">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <h2 className="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
+              <Clock size={16} className="text-brand" />
+              Recent Submissions History
+            </h2>
+            <span className="text-xs text-ink-muted">
+              {myRecentComplaints.length} recent report{myRecentComplaints.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[500px]">
+              <thead>
+                <tr className="border-b border-border text-ink-muted uppercase tracking-wider text-[10px]">
+                  <th className="pb-2.5 font-semibold">Ticket ID</th>
+                  <th className="pb-2.5 font-semibold">Category</th>
+                  <th className="pb-2.5 font-semibold">Status</th>
+                  <th className="pb-2.5 font-semibold">Priority</th>
+                  <th className="pb-2.5 font-semibold">Uploaded / Filed</th>
+                  <th className="pb-2.5 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {myRecentComplaints.map((c) => {
+                  const id = c.complaint_id || c.id;
+                  const isSelected = searchId === id || (complaint && (complaint.complaint_id === id || complaint.id === id));
+                  return (
+                    <tr 
+                      key={id}
+                      onClick={() => handleQuickSelect(id)}
+                      className={`cursor-pointer transition-colors hover:bg-surface-hover ${
+                        isSelected ? "bg-brand/5 font-medium" : ""
+                      }`}
+                    >
+                      <td className="py-3 font-mono font-bold text-brand whitespace-nowrap">
+                        #{id}
+                      </td>
+                      <td className="py-3 capitalize text-ink whitespace-nowrap font-medium">
+                        {c.category?.replace(/_/g, " ")}
+                      </td>
+                      <td className="py-3 whitespace-nowrap">
+                        <StatusBadge status={c.status} />
+                      </td>
+                      <td className="py-3 whitespace-nowrap">
+                        <PriorityBadge priority={c.priority_label} />
+                      </td>
+                      <td className="py-3 text-ink-muted whitespace-nowrap">
+                        {new Date(c.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        })}
+                      </td>
+                      <td className="py-3 text-right whitespace-nowrap">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "primary" : "outline"}
+                          size="sm"
+                          className="h-7 px-3 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickSelect(id);
+                          }}
+                        >
+                          {isSelected ? "Tracking" : "Track"}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
       {error && (
         <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs sm:text-sm flex items-start gap-3">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
@@ -238,16 +293,41 @@ export default function TrackComplaint() {
               </div>
             )}
 
-            {/* Attached Citizen Media */}
-            {complaint.media_urls && complaint.media_urls.length > 0 && (
-              <div className="pt-2">
-                <MediaGallery mediaUrls={complaint.media_urls} title="Citizen Attached Media" />
-              </div>
-            )}
+            {/* Attached Citizen Media or Official NYC 311 Telemetry Banner */}
+            {(() => {
+              const isNYC311 = Boolean(complaint.nyc311_unique_key || complaint.agency);
+              const validMediaUrls = (complaint.media_urls || []).filter(
+                (url) => !url.includes("sample_1.jpg") && !url.includes("placeholder") && !url.includes("fake")
+              );
+
+              if (validMediaUrls.length > 0) {
+                return (
+                  <div className="pt-2">
+                    <MediaGallery mediaUrls={validMediaUrls} title="Attached Media Evidence" />
+                  </div>
+                );
+              }
+
+              if (isNYC311) {
+                return (
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/40 space-y-1.5">
+                    <div className="flex items-center gap-2 text-slate-800 dark:text-amber-400 font-semibold text-xs">
+                      <ShieldCheck size={16} className="text-amber-500" />
+                      <span>Official NYC 311 Municipal Open Data Record</span>
+                    </div>
+                    <p className="text-[11px] text-ink-secondary leading-relaxed">
+                      Photographic records are managed internally by the responding agency (<strong>{complaint.agency || "NYC Municipal Services"}</strong>) and are not published via the public Open Data feed. Municipal telemetry verified under Socrata #{complaint.nyc311_unique_key || complaint.id}.
+                    </p>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {/* Full Details Deep Link */}
             <div className="pt-3 border-t border-border flex justify-end">
-              <Link to={`/citizen/complaints/${complaint.id || complaint.complaint_id}`}>
+              <Link to={`${complaintsBasePath}/${complaint.id || complaint.complaint_id}`}>
                 <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-xs">
                   View Full Audit & Comments <ArrowRight size={14} />
                 </Button>

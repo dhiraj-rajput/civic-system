@@ -13,14 +13,12 @@ const NAV_CONFIG = {
   officer: [
     { to: '/officer', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/officer/complaints', label: 'My Queue', icon: Inbox },
-    { to: '/citizen/track', label: 'Lookup Issue', icon: Search },
   ],
   admin: [
     { to: '/admin', label: 'Overview', icon: LayoutDashboard },
     { to: '/admin/complaints', label: 'All Complaints', icon: ClipboardList },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-    { to: '/citizen/track', label: 'Track Ticket', icon: Search },
   ],
 };
 
@@ -45,17 +43,11 @@ export default function Sidebar({ collapsed, onToggle }) {
             </div>
           </Link>
         )}
-        {collapsed && (
-          <button 
-            onClick={onToggle} 
-            className="mx-auto flex items-center justify-center rounded p-1.5 text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors" 
-            title="Expand Sidebar"
-            aria-label="Expand Sidebar"
-          >
-            <PanelLeft size={20} />
-          </button>
-        )}
-        {!collapsed && (
+        {collapsed ? (
+          <Link to="/" className="mx-auto flex items-center justify-center p-1" title="CivicPortal">
+            <CivicEmblem size={24} />
+          </Link>
+        ) : (
           <button 
             onClick={onToggle} 
             className="rounded p-1.5 text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors"

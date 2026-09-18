@@ -31,14 +31,14 @@ export default function TopBar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
         >
           <Menu size={20} />
         </button>
-        {onToggleSidebar && (
+        {onToggleSidebar && sidebarCollapsed && (
           <button
             onClick={onToggleSidebar}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="hidden md:flex rounded-lg p-2 text-ink-secondary hover:bg-surface hover:text-ink transition-colors"
+            aria-label="Open sidebar"
+            title="Open sidebar"
+            className="hidden md:flex items-center gap-1.5 rounded-lg p-2 text-ink-secondary hover:bg-surface hover:text-ink transition-colors"
           >
-            {sidebarCollapsed ? <PanelLeft size={19} /> : <PanelLeftClose size={19} />}
+            <PanelLeft size={19} />
           </button>
         )}
         <div className="flex items-center gap-2 md:hidden">

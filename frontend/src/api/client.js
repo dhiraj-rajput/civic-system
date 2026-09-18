@@ -48,7 +48,16 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    const detail = body && typeof body === "object" ? body.detail : body;
+    let detail = body && typeof body === "object" ? body.detail : body;
+    if (res.status === 413 || (typeof detail === "string" && (detail.includes("413") || detail.toLowerCase().includes("request entity too large")))) {
+      detail = "File size exceeds the server upload limit (max 50MB for videos, 15MB for photos). Please select a smaller file.";
+    } else if (typeof detail === "string" && (detail.trim().startsWith("<") || detail.includes("<html") || detail.includes("<!DOCTYPE"))) {
+      if (res.status === 502 || res.status === 504) {
+        detail = "Backend service temporarily unavailable. Please try again in a few moments.";
+      } else {
+        detail = `Server error (${res.status}). Please try again with smaller files.`;
+      }
+    }
     throw new ApiError(res.status, detail || `Request failed (${res.status})`);
   }
   return body;

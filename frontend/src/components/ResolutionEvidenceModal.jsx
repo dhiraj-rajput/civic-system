@@ -32,6 +32,14 @@ export default function ResolutionEvidenceModal({
 
   const handleFileUpload = async (file, type) => {
     if (!file) return;
+    const isVid = file.type.startsWith("video/") || file.name.match(/\.(mp4|webm|mov|mkv)$/i);
+    const maxSize = isVid ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
+    const maxMb = isVid ? 50 : 15;
+    if (file.size > maxSize) {
+      toast.error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed is ${maxMb}MB.`);
+      return;
+    }
+
     const isBefore = type === "before";
     if (isBefore) setUploadingBefore(true);
     else setUploadingAfter(true);
@@ -55,6 +63,17 @@ export default function ResolutionEvidenceModal({
 
   const handleAdditionalUpload = async (files) => {
     if (!files || !files.length) return;
+    for (const file of Array.from(files)) {
+      const isVid = file.type.startsWith("video/") || file.name.match(/\.(mp4|webm|mov|mkv)$/i);
+      const maxSize = isVid ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
+      const maxMb = isVid ? 50 : 15;
+      if (file.size > maxSize) {
+        toast.error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed is ${maxMb}MB.`);
+        if (additionalInputRef.current) additionalInputRef.current.value = "";
+        return;
+      }
+    }
+
     setUploadingAdditional(true);
     try {
       const uploaded = [];

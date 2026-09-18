@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Sparkles, X, Check } from 'lucide-react';
 
-export default function AISuggestion({ suggestion, onAccept, onDismiss }) {
+export default function AISuggestion({ suggestion, onAccept, onDismiss, onApplyCategory }) {
   const [isVisible, setIsVisible] = useState(false);
+  const [applied, setApplied] = useState(false);
 
   useEffect(() => {
     if (suggestion && suggestion.confidence > 0.4) {
+      setApplied(false);
       // Small delay for entrance animation
       const timer = setTimeout(() => setIsVisible(true), 10);
       return () => clearTimeout(timer);
@@ -19,6 +21,16 @@ export default function AISuggestion({ suggestion, onAccept, onDismiss }) {
   }
 
   const confidencePercent = Math.round(suggestion.confidence * 100);
+
+  const handleApply = () => {
+    const cat = suggestion.category;
+    if (onAccept) onAccept(cat);
+    if (onApplyCategory) onApplyCategory(cat);
+    setApplied(true);
+    setTimeout(() => {
+      if (onDismiss) onDismiss();
+    }, 1200);
+  };
 
   return (
     <div 
@@ -54,14 +66,20 @@ export default function AISuggestion({ suggestion, onAccept, onDismiss }) {
       
       <div className="flex items-center gap-1 ml-4 border-l border-border/50 pl-4">
         <button
-          onClick={onAccept}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-accent-dark hover:bg-accent rounded-md transition-colors shadow-sm"
+          type="button"
+          onClick={handleApply}
+          className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-md transition-all shadow-sm ${
+            applied 
+              ? "bg-emerald-600 hover:bg-emerald-700" 
+              : "bg-accent-dark hover:bg-accent cursor-pointer"
+          }`}
           title="Apply Suggestion"
         >
           <Check size={14} />
-          <span>Apply</span>
+          <span>{applied ? "Applied!" : "Apply"}</span>
         </button>
         <button
+          type="button"
           onClick={onDismiss}
           className="p-1.5 text-ink-muted hover:text-ink hover:bg-surface-hover rounded-md transition-colors"
           title="Dismiss"

@@ -59,6 +59,8 @@ export default function App() {
                   <Route path="/" element={<OfficerDashboard />} />
                   <Route path="/complaints" element={<OfficerComplaints />} />
                   <Route path="/complaints/:id" element={<ComplaintDetail />} />
+                  <Route path="/track" element={<CitizenTrack />} />
+                  <Route path="/track/:id" element={<CitizenTrack />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>
@@ -73,6 +75,8 @@ export default function App() {
                   <Route path="/complaints/:id" element={<ComplaintDetail />} />
                   <Route path="/departments" element={<AdminDepartments />} />
                   <Route path="/analytics" element={<AdminAnalytics />} />
+                  <Route path="/track" element={<CitizenTrack />} />
+                  <Route path="/track/:id" element={<CitizenTrack />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>

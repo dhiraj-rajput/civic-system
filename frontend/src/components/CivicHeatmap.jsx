@@ -77,10 +77,10 @@ export default function CivicHeatmap() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (selectedCategory !== "All") params.append("category", selectedCategory);
-      if (selectedPriority !== "All") params.append("priority", selectedPriority);
-      if (selectedStatus !== "All") params.append("status", selectedStatus);
-      if (selectedBorough && selectedBorough !== "All" && selectedBorough !== "All Boroughs") {
+      if (selectedCategory && selectedCategory !== "All") params.append("category", selectedCategory);
+      if (selectedPriority && selectedPriority !== "All") params.append("priority", selectedPriority);
+      if (selectedStatus && selectedStatus !== "All") params.append("status", selectedStatus);
+      if (selectedBorough && !["All", "All Locations", "All Boroughs"].includes(selectedBorough)) {
         params.append("borough", selectedBorough);
       }
       if (selectedDays) params.append("days", selectedDays);

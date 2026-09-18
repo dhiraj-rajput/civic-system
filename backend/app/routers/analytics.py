@@ -464,10 +464,11 @@ async def heatmap(
     if days:
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         query["created_at"] = {"$gte": cutoff}
-    if borough and borough not in ("All", "All Boroughs"):
+    if borough and borough.strip() not in ("All", "All Boroughs", "All Locations", ""):
+        b_clean = borough.strip()
         query["$or"] = [
-            {"borough": {"$regex": f"^{borough}", "$options": "i"}},
-            {"address_text": {"$regex": borough, "$options": "i"}},
+            {"borough": {"$regex": b_clean, "$options": "i"}},
+            {"address_text": {"$regex": b_clean, "$options": "i"}},
         ]
 
     projection = {
@@ -490,17 +491,29 @@ async def heatmap(
     for d in docs:
         loc = d.get("location") or {}
         coords = loc.get("coordinates")
-        if coords and len(coords) >= 2:
-            lat = coords[1]
-            lng = coords[0]
-        else:
-            lat = loc.get("lat", 0.0)
-            lng = loc.get("lng", 0.0)
+        lat = None
+        lng = None
+        if coords and isinstance(coords, (list, tuple)) and len(coords) >= 2:
+            try:
+                lng = float(coords[0])
+                lat = float(coords[1])
+            except (ValueError, TypeError):
+                pass
+        if lat is None or lng is None:
+            try:
+                if "lat" in loc and "lng" in loc and loc["lat"] is not None and loc["lng"] is not None:
+                    lat = float(loc["lat"])
+                    lng = float(loc["lng"])
+            except (ValueError, TypeError):
+                pass
 
-        # Skip points with no coordinates
-        if not lat and not lng:
+        # Skip points with missing or zero coordinates
+        if lat is None or lng is None or (lat == 0.0 and lng == 0.0):
             continue
+
         created_at = d.get("created_at", now)
+        if not isinstance(created_at, datetime):
+            created_at = now
         hours_elapsed = (now - created_at).total_seconds() / 3600
         points.append({
             "id": str(d["_id"]),
@@ -511,6 +524,7 @@ async def heatmap(
             "status": d.get("status", "New"),
             "lat": lat,
             "lng": lng,
+            "borough": d.get("borough", ""),
             "address_text": d.get("address_text", ""),
             "is_duplicate": d.get("is_duplicate", False),
             "duplicate_group_id": d.get("duplicate_group_id"),
