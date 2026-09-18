@@ -1,8 +1,8 @@
 """Analytics Router.
 Provides summary metrics, SLA performance, aging alerts, trend analytics,
-hotspots, and geographic heatmap data for administrative dashboards.
+hotspots, geographic heatmap data, and intake telemetry for administrative dashboards.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -53,7 +53,7 @@ async def summary():
 @router.get("/aging")
 async def aging(sla_hours: int = 72):
     db = get_db()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     cutoff = now - timedelta(hours=sla_hours)
     docs = await db.complaints.find(
         {"status": {"$in": ACTIVE_STATUSES}, "created_at": {"$lt": cutoff}}
@@ -128,7 +128,7 @@ async def hotspots(limit: int = 10, grid_precision: int = 3):
 async def sla(sla_hours: int = 72):
     """SLA performance: fraction of complaints resolved within sla_hours and current breach volume."""
     db = get_db()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     cutoff = now - timedelta(hours=sla_hours)
 
     resolved_docs = await db.complaints.find(
@@ -166,7 +166,7 @@ async def sla(sla_hours: int = 72):
 @router.get("/trend")
 async def trend(days: int = 30):
     db = get_db()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     start = now - timedelta(days=days)
 
     filed_pipeline = [
@@ -219,6 +219,131 @@ async def trend(days: int = 30):
     return result
 
 
+@router.get("/intake-telemetry")
+async def intake_telemetry():
+    """Computes dynamic 24-hour hourly distribution and borough jurisdiction breakdown from live database records."""
+    db = get_db()
+
+    # 1. Aggregate hourly distribution
+    pipeline_hours = [
+        {
+            "$project": {
+                "hour": {"$hour": "$created_at"},
+            }
+        },
+        {
+            "$group": {
+                "_id": "$hour",
+                "count": {"$sum": 1},
+            }
+        },
+        {"$sort": {"_id": 1}}
+    ]
+    raw_hours = await db.complaints.aggregate(pipeline_hours).to_list(None)
+    hour_map = {item["_id"]: item["count"] for item in raw_hours if item["_id"] is not None}
+
+    max_h_count = max(hour_map.values()) if hour_map else 1
+    hourly_result = []
+    for h in range(24):
+        cnt = hour_map.get(h, 0)
+        if h == 0:
+            lbl = "12 AM"
+        elif h < 12:
+            lbl = f"{h} AM"
+        elif h == 12:
+            lbl = "12 PM"
+        else:
+            lbl = f"{h - 12} PM"
+
+        hourly_result.append({
+            "hour": f"{h:02d}",
+            "label": lbl,
+            "count": cnt,
+            "peak": cnt >= (0.75 * max_h_count) if max_h_count > 0 else False
+        })
+
+    # 2. Aggregate Borough jurisdiction
+    pipeline_boroughs = [
+        {
+            "$project": {
+                "borough": {
+                    "$cond": [
+                        {"$and": [{"$ne": ["$borough", None]}, {"$ne": ["$borough", ""]}]},
+                        "$borough",
+                        {"$cond": [
+                            {"$regexMatch": {"input": {"$ifNull": ["$address_text", ""]}, "regex": "Brooklyn", "options": "i"}},
+                            "Brooklyn",
+                            {"$cond": [
+                                {"$regexMatch": {"input": {"$ifNull": ["$address_text", ""]}, "regex": "Queens", "options": "i"}},
+                                "Queens",
+                                {"$cond": [
+                                    {"$regexMatch": {"input": {"$ifNull": ["$address_text", ""]}, "regex": "Bronx", "options": "i"}},
+                                    "The Bronx",
+                                    {"$cond": [
+                                        {"$regexMatch": {"input": {"$ifNull": ["$address_text", ""]}, "regex": "Staten", "options": "i"}},
+                                        "Staten Island",
+                                        "Manhattan"
+                                    ]}
+                                ]}
+                            ]}
+                        ]}
+                    ]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$borough",
+                "count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"count": -1}}
+    ]
+    raw_boroughs = await db.complaints.aggregate(pipeline_boroughs).to_list(10)
+    total_complaints = sum(b["count"] for b in raw_boroughs) or 1
+
+    color_palette = ["bg-amber-500", "bg-blue-500", "bg-emerald-500", "bg-purple-500", "bg-rose-500", "bg-indigo-500"]
+    borough_result = []
+    for idx, b in enumerate(raw_boroughs):
+        name = b["_id"] or "Unassigned"
+        cnt = b["count"]
+        share = round((cnt / total_complaints) * 100)
+        borough_result.append({
+            "name": name,
+            "count": cnt,
+            "share": share,
+            "color": color_palette[idx % len(color_palette)]
+        })
+
+    # 3. Peak Day of the week
+    pipeline_dow = [
+        {
+            "$project": {
+                "day": {"$dayOfWeek": "$created_at"}  # 1 = Sunday, 2 = Monday, ...
+            }
+        },
+        {
+            "$group": {
+                "_id": "$day",
+                "count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"count": -1}}
+    ]
+    raw_dow = await db.complaints.aggregate(pipeline_dow).to_list(None)
+    DOW_MAP = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday", 5: "Thursday", 6: "Friday", 7: "Saturday"}
+    top_day = DOW_MAP.get(raw_dow[0]["_id"], "Monday") if raw_dow else "Monday"
+    top_day_share = round((raw_dow[0]["count"] / total_complaints) * 100, 1) if raw_dow else 25.0
+
+    return {
+        "hourly": hourly_result,
+        "boroughs": borough_result,
+        "peak_day": top_day,
+        "peak_day_share": top_day_share,
+        "total_analyzed": total_complaints
+    }
+
+
 @router.get("/heatmap")
 async def heatmap(
     category: Optional[str] = Query(None),
@@ -240,11 +365,11 @@ async def heatmap(
     if recurring_only:
         query["is_duplicate"] = True
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         query["created_at"] = {"$gte": cutoff}
 
     docs = await db.complaints.find(query).limit(500).to_list(500)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     points = []
     for d in docs:
