@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar.jsx";
 import TopBar from "./TopBar.jsx";
 import BottomNav from "./BottomNav.jsx";
+import NotificationBanner from "../NotificationBanner.jsx";
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -43,7 +44,8 @@ export default function DashboardLayout({ children }) {
         className="flex min-w-0 flex-1 flex-col transition-[padding] duration-300"
         style={typeof window !== 'undefined' && window.innerWidth >= 768 ? mainPadding : {}}
       >
-        <TopBar onMenuClick={toggleMobile} />
+        <TopBar onMenuClick={toggleMobile} onToggleSidebar={toggleSidebar} sidebarCollapsed={collapsed} />
+        <NotificationBanner />
         <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
           <div className="mx-auto max-w-6xl">
             {children}

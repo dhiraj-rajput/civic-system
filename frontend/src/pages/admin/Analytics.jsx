@@ -122,30 +122,30 @@ export default function Analytics() {
             Real-time municipal performance KPIs, dispatch SLA thresholds, and geographic trends.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-ink-muted">
-          <span>Synced: {getRelativeTimeMinutes()}</span>
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs text-ink-muted w-full sm:w-auto">
+          <span className="shrink-0">Synced: {getRelativeTimeMinutes()}</span>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleExport} 
             isLoading={isExporting} 
-            className="flex items-center gap-1.5 border-brand/40 text-brand hover:bg-brand/10"
+            className="flex items-center gap-1.5 border-brand/40 text-brand hover:bg-brand/10 min-h-[38px] sm:min-h-[34px]"
             title="Download full operational records as CSV"
           >
             <Download size={13} /> Export Report (CSV)
           </Button>
-          <Button variant="outline" size="sm" onClick={loadData} isLoading={loading} className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={loadData} isLoading={loading} className="flex items-center gap-1.5 min-h-[38px] sm:min-h-[34px]">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
         </div>
       </div>
 
       {/* 2. SLA Performance Section */}
-      <Panel className="p-6">
-        <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+      <Panel className="p-4 sm:p-6">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center justify-between">
           
-          <div className="flex items-center gap-8">
-            <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-8 w-full md:w-auto text-center sm:text-left">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" className="text-border" strokeWidth="8" />
                 <circle 
@@ -156,21 +156,21 @@ export default function Analytics() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold" style={{ color: slaColor }}>{compliancePercent}%</span>
-                <span className="text-[10px] text-ink-muted uppercase font-semibold tracking-wider">Compliance</span>
+                <span className="text-xl sm:text-2xl font-bold" style={{ color: slaColor }}>{compliancePercent}%</span>
+                <span className="text-[9px] sm:text-[10px] text-ink-muted uppercase font-semibold tracking-wider">Compliance</span>
               </div>
             </div>
             
             <div className="space-y-2">
               <h2 className="text-base font-bold text-ink">SLA Compliance Target</h2>
               <div className="text-xs text-ink-secondary">Municipal resolution window for incoming citizen cases</div>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center justify-center sm:justify-start gap-2">
                 {['48', '72', '96'].map(hours => (
                   <button
                     key={hours}
                     type="button"
                     onClick={() => setSlaThreshold(hours)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
+                    className={`px-3 py-1.5 min-h-[34px] text-xs font-semibold rounded-full border transition-all ${
                       slaThreshold === hours 
                         ? 'bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 border-transparent shadow-sm' 
                         : 'bg-surface-muted text-ink-secondary border-border hover:border-brand/40'
@@ -183,7 +183,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-1 w-full md:pl-8 md:border-l border-border">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 flex-1 w-full md:pl-8 md:border-l border-border">
             <div>
               <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
                 <Clock size={13} /> Avg Resolution
@@ -326,9 +326,9 @@ export default function Analytics() {
             </div>
           </div>
           
-          <div className="flex-1 overflow-auto max-h-[350px]">
+          <div className="flex-1 overflow-x-auto max-h-[350px]">
             {aging && aging.length > 0 ? (
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-xs min-w-[420px]">
                 <thead>
                   <tr className="border-b border-border text-ink-muted uppercase tracking-wider text-[10px]">
                     <th className="pb-2 font-semibold">ID</th>

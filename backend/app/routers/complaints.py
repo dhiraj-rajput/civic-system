@@ -35,7 +35,7 @@ from app.services.gemini_service import analyze_with_gemini
 router = APIRouter(prefix="/complaints", tags=["complaints"])
 
 
-def _to_out(doc: dict) -> ComplaintOut:
+def _to_out(doc: dict, linked_duplicates: list = None) -> ComplaintOut:
     coords = (doc.get("location") or {}).get("coordinates") or [0.0, 0.0]
     lat = coords[1] if len(coords) > 1 else 0.0
     lng = coords[0] if len(coords) > 0 else 0.0
@@ -58,6 +58,7 @@ def _to_out(doc: dict) -> ComplaintOut:
         assigned_officer_name=doc.get("assigned_officer_name"),
         is_duplicate=doc.get("is_duplicate", False),
         duplicate_group_id=doc.get("duplicate_group_id"),
+        linked_duplicates=linked_duplicates if linked_duplicates is not None else doc.get("linked_duplicates", []),
         resolution_evidence=doc.get("resolution_evidence"),
         citizen_verification=doc.get("citizen_verification"),
         created_at=doc["created_at"],
@@ -415,7 +416,34 @@ async def get_complaint(complaint_id: str, current_user: dict = Depends(get_curr
         if escalation:
             doc.update(escalation)
 
-    return _to_out(doc)
+    # Populate linked duplicate cluster members
+    gid = doc.get("duplicate_group_id") or doc.get("complaint_id")
+    linked_dups = []
+    if gid:
+        cursor = db.complaints.find(
+            {
+                "$or": [
+                    {"duplicate_group_id": gid},
+                    {"complaint_id": gid},
+                ],
+                "_id": {"$ne": doc["_id"]},
+            },
+            projection={"complaint_id": 1, "description": 1, "status": 1, "created_at": 1, "is_duplicate": 1, "address_text": 1, "category": 1}
+        ).sort("created_at", 1).limit(10)
+        async for item in cursor:
+            created_val = item.get("created_at")
+            linked_dups.append({
+                "id": str(item["_id"]),
+                "complaint_id": item.get("complaint_id", str(item["_id"])),
+                "description": (item.get("description") or "")[:120],
+                "status": item.get("status", "New"),
+                "category": item.get("category", "other"),
+                "is_duplicate": item.get("is_duplicate", False),
+                "address_text": item.get("address_text", ""),
+                "created_at": created_val.isoformat() if isinstance(created_val, datetime) else str(created_val or ""),
+            })
+
+    return _to_out(doc, linked_duplicates=linked_dups)
 
 
 @router.get("/{complaint_id}/track", response_model=ComplaintTrack)
@@ -443,6 +471,7 @@ async def resolve_complaint(
     evidence = {
         "before_image_url": payload.before_image_url,
         "after_image_url": payload.after_image_url,
+        "media_urls": payload.media_urls or [],
         "notes": payload.notes,
         "resolved_by": current_user["name"],
         "resolved_at": now,

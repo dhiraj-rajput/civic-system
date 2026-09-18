@@ -202,7 +202,7 @@ export default function Register() {
             </div>
           )}
 
-          <Button type="submit" variant="primary" isLoading={submitting} className="w-full">
+          <Button type="submit" variant="primary" isLoading={submitting} className="w-full min-h-[44px] justify-center">
             Create account
           </Button>
         </form>

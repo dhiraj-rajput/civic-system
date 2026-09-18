@@ -133,7 +133,7 @@ export default function Login() {
             </div>
           )}
 
-          <Button type="submit" variant="primary" isLoading={submitting} className="mt-2 w-full">
+          <Button type="submit" variant="primary" isLoading={submitting} className="mt-2 w-full min-h-[44px] justify-center">
             Sign in
           </Button>
         </form>

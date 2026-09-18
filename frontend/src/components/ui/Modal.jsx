@@ -30,7 +30,8 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
           <button 
             onClick={onClose}
-            className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+            title="Close modal"
           >
             <X size={20} />
           </button>
@@ -39,7 +40,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
           {children}
         </div>
         {footer && (
-          <div className="p-4 border-t border-[var(--border-default)] bg-[var(--surface-muted)] rounded-b-lg flex justify-end gap-3">
+          <div className="p-4 border-t border-[var(--border-default)] bg-[var(--surface-muted)] rounded-b-lg flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3">
             {footer}
           </div>
         )}

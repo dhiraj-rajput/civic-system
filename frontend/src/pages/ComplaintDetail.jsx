@@ -22,7 +22,8 @@ import {
   Info,
   ChevronRight,
   Share2,
-  Navigation
+  Navigation,
+  ArrowRight
 } from "lucide-react";
 
 import { api } from "@/api/client";
@@ -40,8 +41,12 @@ import CitizenVerificationCard from "@/components/CitizenVerificationCard";
 import StarRating from "@/components/StarRating";
 import ResolutionEvidenceModal from "@/components/ResolutionEvidenceModal";
 import SmartAssignModal from "@/components/SmartAssignModal";
-import ConfirmModal from "@/components/ui/ConfirmModal";
 import { STATUSES } from "@/constants";
+
+const isVideo = (url) => {
+  if (!url) return false;
+  return url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".mov") || url.includes("video");
+};
 
 export default function ComplaintDetail() {
   const { id } = useParams();
@@ -53,6 +58,12 @@ export default function ComplaintDetail() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const getComplaintLink = (cid) => {
+    if (user?.role === "officer") return `/officer/complaints/${cid}`;
+    if (user?.role === "citizen") return `/citizen/complaints/${cid}`;
+    return `/admin/complaints?selected=${cid}`;
+  };
 
   // Modals
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
@@ -328,6 +339,72 @@ export default function ComplaintDetail() {
         {/* Left Column (2 Cols wide): Issue Details, Attached Media, NYC 311 Telemetry, Map */}
         <div className="lg:col-span-2 space-y-6">
           
+          {/* Duplicate Report Linked Alert */}
+          {complaint.is_duplicate && complaint.duplicate_group_id && (
+            <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+                  <AlertTriangle size={18} className="shrink-0" />
+                  <span>Duplicate Report Merged into Master Case</span>
+                </div>
+                <Link
+                  to={getComplaintLink(complaint.duplicate_group_id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-colors shrink-0 shadow-sm"
+                >
+                  View Master #{complaint.duplicate_group_id} <ArrowRight size={14} />
+                </Link>
+              </div>
+              <p className="text-xs text-ink-secondary leading-relaxed">
+                This complaint was automatically matched to an existing cluster based on geographic proximity (within 200m) and overlapping description keywords. Field updates, officer dispatches, and resolution proof are tracked on the primary case <strong>#{complaint.duplicate_group_id}</strong>.
+              </p>
+            </div>
+          )}
+
+          {/* Master Case Cluster Banner */}
+          {complaint.linked_duplicates && complaint.linked_duplicates.length > 0 && (
+            <div className="rounded-2xl border-2 border-brand/40 bg-brand/5 p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-brand/20 pb-3 gap-2">
+                <div className="flex items-center gap-2 text-brand font-bold text-sm">
+                  <Layers size={18} className="shrink-0" />
+                  <span>Master Case — Duplicate Cluster ({complaint.linked_duplicates.length} Linked Reports)</span>
+                </div>
+                <span className="text-xs text-ink-muted">
+                  Consolidated Work Order
+                </span>
+              </div>
+              <p className="text-xs text-ink-secondary leading-relaxed">
+                Multiple citizens reported this same civic issue in this vicinity. All reports are consolidated into this master case. Resolving this ticket will verify and update all {complaint.linked_duplicates.length} citizen submissions.
+              </p>
+              <div className="space-y-2 pt-1">
+                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">
+                  Linked Duplicate Reports:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {complaint.linked_duplicates.map((dup) => (
+                    <Link
+                      key={dup.id || dup.complaint_id}
+                      to={getComplaintLink(dup.complaint_id || dup.id)}
+                      className="p-3 rounded-xl border border-border bg-card hover:border-brand transition-all flex items-start justify-between gap-2 group"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-mono text-xs font-bold text-ink group-hover:text-brand transition-colors">
+                          #{dup.complaint_id}
+                        </div>
+                        <p className="text-[11px] text-ink-muted truncate mt-0.5">
+                          {dup.description || "Duplicate report"}
+                        </p>
+                        <span className="text-[10px] text-ink-muted">
+                          {new Date(dup.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <StatusBadge status={dup.status} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Issue Description Card */}
           <Panel className="p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -389,11 +466,19 @@ export default function ComplaintDetail() {
                       <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Before Repair</span>
                       <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Initial State</span>
                     </div>
-                    <img
-                      src={complaint.resolution_evidence.before_image_url}
-                      alt="Before Repair"
-                      className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
-                    />
+                    {isVideo(complaint.resolution_evidence.before_image_url) ? (
+                      <video
+                        src={complaint.resolution_evidence.before_image_url}
+                        controls
+                        className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm bg-black"
+                      />
+                    ) : (
+                      <img
+                        src={complaint.resolution_evidence.before_image_url}
+                        alt="Before Repair"
+                        className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
+                      />
+                    )}
                   </div>
                 )}
                 {complaint.resolution_evidence.after_image_url && (
@@ -402,14 +487,32 @@ export default function ComplaintDetail() {
                       <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">After Repair</span>
                       <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Resolution Proof</span>
                     </div>
-                    <img
-                      src={complaint.resolution_evidence.after_image_url}
-                      alt="After Repair"
-                      className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
-                    />
+                    {isVideo(complaint.resolution_evidence.after_image_url) ? (
+                      <video
+                        src={complaint.resolution_evidence.after_image_url}
+                        controls
+                        className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm bg-black"
+                      />
+                    ) : (
+                      <img
+                        src={complaint.resolution_evidence.after_image_url}
+                        alt="After Repair"
+                        className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
+                      />
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Additional Multi-Media Evidence */}
+              {complaint.resolution_evidence.media_urls && complaint.resolution_evidence.media_urls.length > 0 && (
+                <div className="pt-2 border-t border-emerald-500/10">
+                  <MediaGallery
+                    mediaUrls={complaint.resolution_evidence.media_urls}
+                    title="Additional Resolution Media (Photos & Videos)"
+                  />
+                </div>
+              )}
             </Panel>
           )}
 
@@ -474,11 +577,11 @@ export default function ComplaintDetail() {
                     Key #{complaint.nyc311_unique_key}
                   </span>
                   <a
-                    href={`https://portal.311.nyc.gov/sr-details/?id=${complaint.nyc311_unique_key}`}
+                    href={`https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9?q=${complaint.nyc311_unique_key}`}
                     target="_blank"
                     rel="noreferrer"
                     className="p-1.5 rounded-md hover:bg-hover text-ink-secondary hover:text-amber-400 transition-colors"
-                    title="View on NYC 311 Portal"
+                    title="View Verified Record on NYC Open Data Portal"
                   >
                     <ExternalLink size={16} />
                   </a>

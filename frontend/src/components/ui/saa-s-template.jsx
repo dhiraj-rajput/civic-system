@@ -147,7 +147,7 @@ export default function LandingPage() {
       
       {/* 1. Header Navigation */}
       <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-[#121214]/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <CivicLogo size={28} />
           </Link>
@@ -161,20 +161,20 @@ export default function LandingPage() {
             </a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-0.5 rounded-full border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
               <ThemeToggle />
             </div>
 
             <Link 
               to="/login" 
-              className="px-3.5 py-1.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1c1c20] transition-all"
+              className="px-2.5 sm:px-3.5 py-1.5 min-h-[36px] flex items-center rounded-lg text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1c1c20] transition-all"
             >
               Sign In
             </Link>
             <a 
               href="#sandbox" 
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 transition-colors shadow-sm"
+              className="px-3 sm:px-4 py-1.5 min-h-[36px] flex items-center rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 transition-colors shadow-sm"
             >
               Test Personas
             </a>
@@ -183,42 +183,42 @@ export default function LandingPage() {
       </header>
 
       {/* 2. Hero Section */}
-      <section className="bg-white dark:bg-[#121214] border-b border-slate-200 dark:border-neutral-800 pt-16 pb-16 px-6">
+      <section className="bg-white dark:bg-[#121214] border-b border-slate-200 dark:border-neutral-800 pt-12 sm:pt-16 pb-12 sm:pb-16 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           
           {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-slate-200 dark:border-neutral-700 bg-slate-100 dark:bg-[#18181b] text-slate-800 dark:text-amber-400 text-xs font-mono font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
-            CONNECTED TO LIVE NYC 311 OPEN DATA (SOCRATA API)
+          <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1 rounded-full border border-slate-200 dark:border-neutral-700 bg-slate-100 dark:bg-[#18181b] text-slate-800 dark:text-amber-400 text-[11px] sm:text-xs font-mono font-medium max-w-full text-left">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse shrink-0"></span>
+            <span className="truncate">LIVE NYC 311 OPEN DATA (SOCRATA API)</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold font-serif tracking-tight text-slate-900 dark:text-white leading-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold font-serif tracking-tight text-slate-900 dark:text-white leading-tight">
             New York City 311 Grievance & <br />
             Rapid Field Response System
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
             A modern, transparent operating system connecting city residents, field response crews, and municipal administrators. Ingests live NYC 311 complaints, automatically clusters duplicate reports within 200 meters, and enforces photo proof before tickets are marked resolved.
           </p>
 
           {/* Action CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-4 pt-2 w-full">
             <Link
               to="/citizen/submit"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 dark:font-semibold shadow-sm transition-all"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-lg font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 dark:font-semibold shadow-sm transition-all w-full sm:w-auto"
             >
               Report an Issue <ArrowRight size={16} />
             </Link>
             <a
               href="#sandbox"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-white dark:bg-[#18181b] hover:bg-slate-50 dark:hover:bg-[#202024] border border-slate-300 dark:border-neutral-700 text-slate-800 dark:text-slate-200 shadow-sm transition-all"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-lg font-medium bg-white dark:bg-[#18181b] hover:bg-slate-50 dark:hover:bg-[#202024] border border-slate-300 dark:border-neutral-700 text-slate-800 dark:text-slate-200 shadow-sm transition-all w-full sm:w-auto"
             >
               <Terminal size={16} className="text-slate-600 dark:text-amber-400" />
               Judge Evaluation Sandbox
             </a>
             <Link
               to="/admin/analytics"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-amber-400 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-amber-400 transition-colors w-full sm:w-auto"
             >
               <MapPin size={16} className="text-slate-400 dark:text-amber-400/80" />
               Incident Map & Heatmap
@@ -226,22 +226,22 @@ export default function LandingPage() {
           </div>
 
           {/* Key Metric Counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-slate-200 dark:border-neutral-800 mt-10 text-left">
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">100+</div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Live NYC 311 Records Seeded</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-8 border-t border-slate-200 dark:border-neutral-800 mt-10 text-left">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">100+</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-1">Live NYC 311 Records Seeded</div>
             </div>
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">&le; 200m</div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Geo-Clustering Radius</div>
+            <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">&le; 200m</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-1">Geo-Clustering Radius</div>
             </div>
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">100%</div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Photo-Verified Resolutions</div>
+            <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">100%</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-1">Photo-Verified Resolutions</div>
             </div>
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">72h</div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Enforced Municipal SLA</div>
+            <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-[#18181b]">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-slate-900 dark:text-amber-400">72h</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-1">Enforced Municipal SLA</div>
             </div>
           </div>
 

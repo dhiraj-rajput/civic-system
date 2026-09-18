@@ -1,4 +1,4 @@
-import { LayoutDashboard, FilePlus, ClipboardList, Inbox, Building2, BarChart3, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
+import { LayoutDashboard, FilePlus, ClipboardList, Inbox, Building2, BarChart3, PanelLeftClose, PanelLeft, LogOut, Search } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { CivicEmblem } from "../CivicLogo.jsx";
@@ -8,16 +8,19 @@ const NAV_CONFIG = {
     { to: '/citizen', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/citizen/submit', label: 'Submit Issue', icon: FilePlus },
     { to: '/citizen/complaints', label: 'My Complaints', icon: ClipboardList },
+    { to: '/citizen/track', label: 'Track Issue', icon: Search },
   ],
   officer: [
     { to: '/officer', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/officer/complaints', label: 'My Queue', icon: Inbox },
+    { to: '/citizen/track', label: 'Lookup Issue', icon: Search },
   ],
   admin: [
     { to: '/admin', label: 'Overview', icon: LayoutDashboard },
     { to: '/admin/complaints', label: 'All Complaints', icon: ClipboardList },
     { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/citizen/track', label: 'Track Ticket', icon: Search },
   ],
 };
 
@@ -43,12 +46,22 @@ export default function Sidebar({ collapsed, onToggle }) {
           </Link>
         )}
         {collapsed && (
-          <Link to="/" className="mx-auto flex items-center justify-center" title="CivicPortal">
-            <CivicEmblem size={26} />
-          </Link>
+          <button 
+            onClick={onToggle} 
+            className="mx-auto flex items-center justify-center rounded p-1.5 text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors" 
+            title="Expand Sidebar"
+            aria-label="Expand Sidebar"
+          >
+            <PanelLeft size={20} />
+          </button>
         )}
         {!collapsed && (
-          <button onClick={onToggle} className="rounded p-1.5 text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors">
+          <button 
+            onClick={onToggle} 
+            className="rounded p-1.5 text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors"
+            title="Collapse Sidebar"
+            aria-label="Collapse Sidebar"
+          >
             <PanelLeftClose size={18} />
           </button>
         )}

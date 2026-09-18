@@ -6,12 +6,14 @@ import { useToast } from "@/components/ui/Toast";
 export default function MediaUpload({
   mediaUrls = [],
   onChange = null,
-  maxFiles = 4,
+  onUploadComplete = null,
+  maxFiles = 6,
   label = "Upload Evidence (Images & Videos)",
-  helperText = "Attach photos or video clips (Max: 5MB image, 25MB video)",
+  helperText = "Attach multiple photos or video clips (Max: 15MB each)",
 }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [activePreview, setActivePreview] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = async (e) => {
@@ -34,6 +36,9 @@ export default function MediaUpload({
         const res = await api.upload("/upload", formData);
         if (res && res.url) {
           newUrls.push(res.url);
+          if (onUploadComplete) {
+            onUploadComplete(res.url);
+          }
         }
       }
       if (onChange) {
@@ -50,28 +55,32 @@ export default function MediaUpload({
     }
   };
 
-  const handleRemove = (urlToRemove) => {
+  const handleRemove = (urlToRemove, e) => {
+    if (e) e.stopPropagation();
     const updated = mediaUrls.filter((u) => u !== urlToRemove);
     if (onChange) onChange(updated);
+    if (activePreview === urlToRemove) setActivePreview(null);
+    toast.info("Media removed");
   };
 
   const isVideo = (url) => {
-    return url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".mov");
+    if (!url) return false;
+    return url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".mov") || url.includes("video");
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-ink">{label}</label>
-        <span className="text-xs text-ink-muted">
-          {mediaUrls.length}/{maxFiles} files
+        <label className="text-xs sm:text-sm font-semibold text-ink">{label}</label>
+        <span className="text-[11px] font-mono text-ink-muted">
+          {mediaUrls.length}/{maxFiles} attached
         </span>
       </div>
 
       {/* Upload Dropzone */}
       <div
         onClick={() => fileInputRef.current?.click()}
-        className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-6 transition-all hover:border-brand hover:bg-surface-hover ${
+        className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border p-6 transition-all hover:border-brand hover:bg-surface-hover ${
           uploading ? "opacity-60 pointer-events-none" : ""
         }`}
       >
@@ -79,7 +88,7 @@ export default function MediaUpload({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          accept="image/*,video/*"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -92,44 +101,109 @@ export default function MediaUpload({
               <Upload size={20} />
             </div>
           )}
-          <div className="text-sm font-medium text-ink">
-            {uploading ? "Uploading to secure storage..." : "Click or drag images & videos here"}
+          <div className="text-xs sm:text-sm font-semibold text-ink">
+            {uploading ? "Uploading to secure storage..." : "Click or tap to upload multiple photos & videos"}
           </div>
-          <div className="text-xs text-ink-muted mt-1">{helperText}</div>
+          <div className="text-[11px] text-ink-muted mt-1">{helperText}</div>
         </div>
       </div>
 
-      {/* Thumbnail previews */}
+      {/* Thumbnail previews with discard and preview click */}
       {mediaUrls.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          {mediaUrls.map((url, idx) => (
-            <div
-              key={idx}
-              className="group relative h-24 overflow-hidden rounded-lg border border-border bg-black/40 shadow-sm"
-            >
-              {isVideo(url) ? (
-                <div className="flex h-full w-full items-center justify-center bg-gray-950 text-gray-300">
-                  <Film size={24} className="text-brand" />
-                  <span className="ml-1.5 text-xs font-mono">Video</span>
-                </div>
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+            <span>Attached Media (Click to preview, ✕ to discard)</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {mediaUrls.map((url, idx) => (
+              <div
+                key={idx}
+                onClick={() => setActivePreview(url)}
+                className="group relative h-28 cursor-pointer overflow-hidden rounded-xl border border-border bg-black/60 shadow-sm transition-all hover:border-brand hover:shadow-md"
+              >
+                {isVideo(url) ? (
+                  <div className="relative flex h-full w-full items-center justify-center bg-gray-950 text-gray-200">
+                    <video src={url} className="h-full w-full object-cover opacity-60" preload="metadata" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Film size={26} className="text-amber-400 drop-shadow" />
+                    </div>
+                    <span className="absolute bottom-1.5 left-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-mono text-gray-200">
+                      Video
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={url}
+                    alt={`Attachment ${idx + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                )}
+
+                {/* Discard Button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleRemove(url, e)}
+                  className="absolute top-1.5 right-1.5 z-10 rounded-full bg-black/80 p-1 text-white shadow transition-all hover:bg-rose-600 hover:scale-110"
+                  aria-label="Discard attachment"
+                  title="Discard file"
+                >
+                  <X size={13} strokeWidth={2.5} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Preview Lightbox Modal */}
+      {activePreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setActivePreview(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full max-h-[88vh] flex flex-col items-center bg-card border border-border rounded-2xl p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full pb-3 border-b border-border">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink">
+                {isVideo(activePreview) ? "Video Preview" : "Photo Preview"}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRemove(activePreview)}
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-500/15 text-rose-600 hover:bg-rose-500 hover:text-white transition-colors"
+                >
+                  Discard File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePreview(null)}
+                  className="p-1 rounded-lg hover:bg-hover text-ink-muted hover:text-ink transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full flex-1 flex items-center justify-center overflow-hidden py-3">
+              {isVideo(activePreview) ? (
+                <video
+                  src={activePreview}
+                  controls
+                  autoPlay
+                  className="max-h-[65vh] w-full rounded-xl object-contain bg-black"
+                />
               ) : (
                 <img
-                  src={url}
-                  alt={`Attachment ${idx + 1}`}
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  src={activePreview}
+                  alt="Full size preview"
+                  className="max-h-[65vh] w-full rounded-xl object-contain"
                 />
               )}
-
-              <button
-                type="button"
-                onClick={() => handleRemove(url)}
-                className="absolute top-1 right-1 rounded-full bg-black/75 p-1 text-white opacity-80 transition-opacity hover:opacity-100 hover:bg-red-600"
-                aria-label="Remove media"
-              >
-                <X size={12} />
-              </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>

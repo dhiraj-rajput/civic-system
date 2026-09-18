@@ -24,6 +24,7 @@ export default function Departments() {
   const { toast } = useToast();
   
   const [departments, setDepartments] = useState([]);
+  const [categoriesList, setCategoriesList] = useState(CATEGORIES);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,11 +46,14 @@ export default function Departments() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [deptData, complaintsData] = await Promise.all([
+      const [deptData, catsData] = await Promise.all([
         api.get("/departments"),
-        api.get("/complaints").catch(() => [])
+        api.get("/departments/categories").catch(() => CATEGORIES)
       ]);
       setDepartments(deptData || []);
+      if (catsData && catsData.length > 0) {
+        setCategoriesList(catsData);
+      }
     } catch (e) {
       toast.error(e.detail || "Could not load departments");
     } finally {
@@ -64,7 +68,7 @@ export default function Departments() {
   const openAddModal = () => {
     setForm({ 
       name: "", 
-      category: "pothole", 
+      category: categoriesList[0]?.value || "pothole", 
       customCategory: "", 
       description: "", 
       contactEmail: "" 
@@ -74,11 +78,11 @@ export default function Departments() {
   };
 
   const openEditModal = (dept) => {
-    const isStandard = CATEGORIES.some(c => c.value === dept.category);
+    const isKnown = categoriesList.some(c => c.value === dept.category);
     setForm({ 
       name: dept.name, 
-      category: isStandard ? dept.category : "custom", 
-      customCategory: isStandard ? "" : dept.category, 
+      category: isKnown ? dept.category : "__custom__", 
+      customCategory: isKnown ? "" : dept.category, 
       description: dept.description || "",
       contactEmail: dept.contact_email || ""
     });
@@ -92,9 +96,14 @@ export default function Departments() {
       return;
     }
 
-    const finalCategory = form.category === "custom" 
-      ? (form.customCategory.trim().toLowerCase().replace(/\s+/g, '_') || "other")
-      : form.category;
+    let finalCategory = form.category;
+    if (form.category === "__custom__") {
+      finalCategory = form.customCategory.trim().toLowerCase().replace(/\s+/g, '_');
+      if (!finalCategory) {
+        toast.error("Please specify a name for the new category");
+        return;
+      }
+    }
     
     setSubmitting(true);
     try {
@@ -109,10 +118,10 @@ export default function Departments() {
         toast.success("Department updated successfully");
       } else {
         await api.post("/departments", payload);
-        toast.success(`Department "${form.name}" created successfully`);
+        toast.success(`Department "${form.name}" created with category "${finalCategory}"`);
       }
       setIsModalOpen(false);
-      loadData();
+      await loadData();
     } catch (e) {
       toast.error(e.detail || `Could not ${editingId ? "update" : "create"} department`);
     } finally {
@@ -127,7 +136,7 @@ export default function Departments() {
       toast.success(`Department "${deletingDept.name}" removed`);
       setDeleteConfirmOpen(false);
       setDeletingDept(null);
-      loadData();
+      await loadData();
     } catch (e) {
       toast.error(e.detail || "Could not delete department");
     }
@@ -153,7 +162,7 @@ export default function Departments() {
             Configure municipal agencies, emergency response divisions, and service routing
           </p>
         </div>
-        <Button onClick={openAddModal} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+        <Button onClick={openAddModal} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center">
           <Plus size={18} /> Add Department
         </Button>
       </div>
@@ -263,7 +272,7 @@ export default function Departments() {
                       variant="ghost" 
                       size="sm" 
                       onClick={() => openEditModal(dept)} 
-                      className="h-8 px-2.5 text-xs text-[var(--text-secondary)] hover:text-slate-900 dark:hover:text-white"
+                      className="min-h-[36px] px-3 text-xs text-[var(--text-secondary)] hover:text-slate-900 dark:hover:text-white flex items-center"
                     >
                       <Edit2 size={13} className="mr-1.5" /> Edit
                     </Button>
@@ -274,9 +283,10 @@ export default function Departments() {
                         setDeletingDept(dept);
                         setDeleteConfirmOpen(true);
                       }} 
-                      className="h-8 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      className="min-h-[36px] min-w-[36px] px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center"
+                      title="Delete Department"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </Button>
                   </div>
                 </div>
@@ -323,10 +333,30 @@ export default function Departments() {
               value={form.category}
               onChange={(e) => setForm({...form, category: e.target.value})}
             >
-              {CATEGORIES.map((c) => (
+              {categoriesList.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
+              <option value="__custom__" className="font-bold text-amber-500">➕ Create New Category...</option>
             </select>
+
+            {form.category === "__custom__" && (
+              <div className="mt-2.5 space-y-1 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 animate-in fade-in duration-200">
+                <label className="font-medium text-xs text-amber-600 dark:text-amber-400 block">
+                  New Category Name (Identifier) <span className="text-red-400">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 text-sm text-[var(--text-primary)]"
+                  value={form.customCategory}
+                  onChange={(e) => setForm({...form, customCategory: e.target.value})}
+                  placeholder="e.g. Traffic Signals, Parks & Trees, Noise Control"
+                />
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Will be normalized to snake_case and become available across citizen intake and dispatching.
+                </p>
+              </div>
+            )}
+
             <p className="text-[11px] text-[var(--text-muted)] mt-1">
               Complaints matching this category will be auto-suggested to this department during dispatch.
             </p>

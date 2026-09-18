@@ -15,13 +15,21 @@ import ComplaintMap from '@/components/ComplaintMap';
 import MediaUpload from '@/components/MediaUpload';
 import MediaGallery from '@/components/MediaGallery';
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   { id: 'pothole', icon: AlertTriangle, label: 'Pothole', desc: 'Road damage, deep holes or asphalt trenches' },
   { id: 'garbage', icon: Trash2, label: 'Garbage', desc: 'Uncollected waste, overflowing bins or dumping' },
   { id: 'streetlight', icon: Lightbulb, label: 'Streetlight', desc: 'Dark streets, broken poles or flickering lamps' },
   { id: 'water_supply', icon: Droplets, label: 'Water Supply', desc: 'Pipe leaks, low pressure or dirty tap water' },
   { id: 'other', icon: MoreHorizontal, label: 'Other', desc: 'Any other civic or infrastructure issue' },
 ];
+
+const CATEGORY_ICON_MAP = {
+  pothole: AlertTriangle,
+  garbage: Trash2,
+  streetlight: Lightbulb,
+  water_supply: Droplets,
+  other: MoreHorizontal,
+};
 
 const NYC_BOROUGHS = [
   { name: 'Manhattan', lat: '40.7831', lng: '-73.9712', address: 'Broadway & 42nd St, Manhattan, NY 10036' },
@@ -36,6 +44,31 @@ export default function SubmitComplaint() {
   
   // Wizard Step (1: Details, 2: Location & Media, 3: Review & Submit)
   const [currentStep, setCurrentStep] = useState(1);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+
+  useEffect(() => {
+    async function loadDynamicCategories() {
+      try {
+        const data = await api.get('/departments/categories');
+        if (Array.isArray(data) && data.length > 0) {
+          const merged = data.map(item => {
+            const val = item.value;
+            const existing = DEFAULT_CATEGORIES.find(d => d.id === val);
+            return {
+              id: val,
+              icon: CATEGORY_ICON_MAP[val] || MoreHorizontal,
+              label: item.label || val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              desc: existing ? existing.desc : `Municipal service for ${item.label || val.replace(/_/g, ' ')}`,
+            };
+          });
+          setCategories(merged);
+        }
+      } catch (e) {
+        // use default categories gracefully
+      }
+    }
+    loadDynamicCategories();
+  }, []);
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -279,7 +312,7 @@ export default function SubmitComplaint() {
     );
   }
 
-  const selectedCatObj = CATEGORIES.find(c => c.id === selectedCategory);
+  const selectedCatObj = categories.find(c => c.id === selectedCategory);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:py-8 space-y-6 animate-in fade-in duration-300">
@@ -355,7 +388,7 @@ export default function SubmitComplaint() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {CATEGORIES.map((cat) => {
+              {categories.map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = selectedCategory === cat.id;
                 return (
@@ -437,7 +470,7 @@ export default function SubmitComplaint() {
               <button
                 type="button"
                 onClick={handleGetLocation}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 transition-colors self-start sm:self-auto"
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 min-h-[40px] rounded-lg border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 transition-colors w-full sm:w-auto self-start sm:self-auto"
               >
                 <MapPin size={14} /> Use My Current Location
               </button>
@@ -454,7 +487,7 @@ export default function SubmitComplaint() {
                     key={b.name}
                     type="button"
                     onClick={() => handleBoroughSelect(b)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    className={`px-3 py-1.5 min-h-[36px] rounded-full text-xs font-medium border transition-colors ${
                       address.includes(b.name)
                         ? 'border-brand bg-brand text-white'
                         : 'border-border bg-surface hover:bg-surface-hover text-ink'
@@ -506,14 +539,13 @@ export default function SubmitComplaint() {
             </div>
 
             {/* Media Upload */}
-            <div className="space-y-2 pt-2 border-t border-border">
-              <label className="block text-xs font-semibold text-ink-secondary">
-                Attach Photos or Videos (Optional)
-              </label>
-              <MediaUpload onUploadComplete={(url) => setMediaUrls([...mediaUrls, url])} />
-              {mediaUrls.length > 0 && (
-                <MediaGallery mediaUrls={mediaUrls} onRemove={(idx) => setMediaUrls(mediaUrls.filter((_, i) => i !== idx))} />
-              )}
+            <div className="pt-2 border-t border-border">
+              <MediaUpload 
+                mediaUrls={mediaUrls} 
+                onChange={setMediaUrls}
+                label="Attach Photos or Videos (Optional)"
+                helperText="Upload multiple pictures or videos showing the civic problem"
+              />
             </div>
           </div>
 

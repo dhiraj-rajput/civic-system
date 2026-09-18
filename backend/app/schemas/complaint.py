@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-Category = Literal["pothole", "garbage", "streetlight", "water_supply", "other"]
+Category = str
 Status = Literal["New", "Assigned", "In Progress", "Resolved", "Closed", "Reopened"]
 
 
@@ -77,6 +77,7 @@ class EscalationEntry(BaseModel):
 class ResolutionEvidence(BaseModel):
     before_image_url: Optional[str] = None
     after_image_url: Optional[str] = None
+    media_urls: List[str] = []
     notes: Optional[str] = None
     resolved_by: Optional[str] = None
     resolved_at: Optional[datetime] = None
@@ -93,6 +94,7 @@ class CitizenVerification(BaseModel):
 class ResolutionSubmit(BaseModel):
     before_image_url: Optional[str] = None
     after_image_url: Optional[str] = None
+    media_urls: List[str] = []
     notes: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -123,6 +125,7 @@ class ComplaintOut(BaseModel):
     assigned_officer_name: Optional[str] = None
     is_duplicate: bool = False
     duplicate_group_id: Optional[str] = None
+    linked_duplicates: List[dict] = []
     resolution_evidence: Optional[ResolutionEvidence] = None
     citizen_verification: Optional[CitizenVerification] = None
     created_at: datetime

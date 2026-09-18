@@ -14,23 +14,23 @@ export default function StatCard({ label, value, tone = 'gray', icon: Icon, delt
   const toneStyle = TONE_MAP[tone] || TONE_MAP.gray;
 
   return (
-    <div className={`bg-card rounded-md border border-border border-l-4 shadow-[var(--shadow-card)] p-4 flex flex-col hover:shadow-[var(--shadow-md)] transition-shadow duration-200 ${toneStyle.border}`}>
-      <div className="flex items-start justify-between mb-2">
-        <div className={`p-2 rounded-md ${toneStyle.iconBg} ${toneStyle.iconColor}`}>
+    <div className={`bg-card rounded-md border border-border border-l-4 shadow-[var(--shadow-card)] p-3.5 sm:p-4 flex flex-col min-w-0 hover:shadow-[var(--shadow-md)] transition-shadow duration-200 ${toneStyle.border}`}>
+      <div className="flex items-start justify-between mb-2 gap-1">
+        <div className={`p-2 rounded-md shrink-0 ${toneStyle.iconBg} ${toneStyle.iconColor}`}>
           {Icon && <Icon size={20} />}
         </div>
         {delta !== undefined && (
-          <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${delta > 0 ? 'bg-success/10 text-success' : delta < 0 ? 'bg-danger/10 text-danger' : 'bg-priority-low/10 text-ink-muted'}`}>
+          <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full shrink-0 ${delta > 0 ? 'bg-success/10 text-success' : delta < 0 ? 'bg-danger/10 text-danger' : 'bg-priority-low/10 text-ink-muted'}`}>
             {delta > 0 ? <ArrowUp size={12} className="mr-1" /> : delta < 0 ? <ArrowDown size={12} className="mr-1" /> : null}
             {Math.abs(delta)}%
           </div>
         )}
       </div>
-      <div>
-        <div className="text-3xl font-semibold text-ink">{value}</div>
-        <div className="mt-1 flex items-center justify-between">
-          <span className="text-sm font-medium text-ink-secondary">{label}</span>
-          {deltaLabel && <span className="text-xs text-ink-muted">{deltaLabel}</span>}
+      <div className="min-w-0">
+        <div className="text-2xl sm:text-3xl font-semibold text-ink truncate">{value}</div>
+        <div className="mt-1 flex items-center justify-between gap-1 flex-wrap">
+          <span className="text-xs sm:text-sm font-medium text-ink-secondary truncate">{label}</span>
+          {deltaLabel && <span className="text-[11px] sm:text-xs text-ink-muted shrink-0">{deltaLabel}</span>}
         </div>
       </div>
     </div>

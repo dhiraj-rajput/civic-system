@@ -215,8 +215,9 @@ export default function ComplaintMap({
     if (mapInstanceRef.current && lat != null && lng != null) {
       if (mode === "picker" && markerRef.current) {
         markerRef.current.setLatLng([lat, lng]);
-      } else if (mode === "multi") {
-        mapInstanceRef.current.setView([lat, lng], zoom || 12);
+        mapInstanceRef.current.setView([lat, lng], zoom || 14);
+      } else if (mode === "single") {
+        mapInstanceRef.current.setView([lat, lng], zoom || 14);
       }
     }
   }, [lat, lng, zoom, mode]);

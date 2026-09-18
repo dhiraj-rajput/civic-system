@@ -7,8 +7,8 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
   
   const footer = (
     <>
-      <Button variant="ghost" onClick={onClose}>Cancel</Button>
-      <Button variant={isDanger ? 'danger' : 'primary'} onClick={() => { onConfirm(); onClose(); }}>
+      <Button variant="ghost" onClick={onClose} className="min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center">Cancel</Button>
+      <Button variant={isDanger ? 'danger' : 'primary'} onClick={() => { onConfirm(); onClose(); }} className="min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center">
         {confirmLabel}
       </Button>
     </>

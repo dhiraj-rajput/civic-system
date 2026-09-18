@@ -63,17 +63,17 @@ export default function Dashboard() {
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-8 animate-in fade-in duration-300">
       
       {/* 1. Welcome row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
             <LayoutDashboard size={24} className="text-[var(--brand-primary)]" />
             Admin Overview
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} isLoading={loading}>
+        <Button variant="outline" size="sm" onClick={fetchData} isLoading={loading} className="min-h-[44px] sm:min-h-[36px] self-start sm:self-auto">
           <RefreshCcw size={16} />
           Refresh
         </Button>

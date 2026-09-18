@@ -243,6 +243,8 @@ async def sla(sla_hours: int = 72):
         avg_resolution_hours = None
         sla_compliance_pct = None
 
+    active_breach_rate_pct = round(100 * breaching_now / open_count, 1) if open_count > 0 else 0.0
+
     return {
         "sla_hours": sla_hours,
         "resolved_count": resolved_count,
@@ -251,6 +253,7 @@ async def sla(sla_hours: int = 72):
         "avg_resolution_hours": avg_resolution_hours,
         "open_count": open_count,
         "breaching_sla_now": breaching_now,
+        "active_breach_rate_pct": active_breach_rate_pct,
     }
 
 
@@ -480,14 +483,23 @@ async def heatmap(
         "duplicate_group_id": 1,
         "created_at": 1,
     }
-    docs = await db.complaints.find(query, projection=projection).limit(500).to_list(500)
+    docs = await db.complaints.find(query, projection=projection).sort("created_at", -1).to_list(1500)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     points = []
     for d in docs:
-        coords = (d.get("location") or {}).get("coordinates") or [0.0, 0.0]
-        lat = coords[1] if len(coords) > 1 else 0.0
-        lng = coords[0] if len(coords) > 0 else 0.0
+        loc = d.get("location") or {}
+        coords = loc.get("coordinates")
+        if coords and len(coords) >= 2:
+            lat = coords[1]
+            lng = coords[0]
+        else:
+            lat = loc.get("lat", 0.0)
+            lng = loc.get("lng", 0.0)
+
+        # Skip points with no coordinates
+        if not lat and not lng:
+            continue
         created_at = d.get("created_at", now)
         hours_elapsed = (now - created_at).total_seconds() / 3600
         points.append({

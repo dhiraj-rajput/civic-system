@@ -84,7 +84,8 @@ export default function SmartAssignModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-ink-muted hover:bg-surface-hover hover:text-ink"
+            className="rounded-lg p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors"
+            title="Close modal"
           >
             <X size={18} />
           </button>
@@ -189,8 +190,8 @@ export default function SmartAssignModal({
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-border">
+              <Button type="button" variant="outline" size="sm" onClick={onClose} className="min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center">
                 Cancel
               </Button>
               <Button
@@ -200,6 +201,7 @@ export default function SmartAssignModal({
                 isLoading={submitting}
                 disabled={!selectedOfficerId}
                 onClick={handleConfirmAssignment}
+                className="min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center"
               >
                 <UserCheck size={14} /> Confirm Assignment
               </Button>

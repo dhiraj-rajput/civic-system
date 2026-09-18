@@ -198,19 +198,19 @@ export default function Complaints() {
       </div>
 
       {/* 2. Filter/search bar */}
-      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-md p-4 shadow-[var(--shadow-card)] flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-4 flex-1 items-center">
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-lg p-3.5 sm:p-4 shadow-[var(--shadow-card)] flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-center justify-between">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3 flex-1 items-center">
           <SearchInput 
             value={search} 
             onChange={(val) => { setSearch(val); setCurrentPage(1); }} 
             placeholder="Search ID or description..."
-            className="w-full max-w-xs"
+            className="w-full sm:w-64"
           />
           
           <select 
             value={statusFilter} 
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[var(--border-focus)] transition-colors"
+            className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs sm:text-sm min-h-[40px] sm:min-h-[36px] focus:outline-none focus:border-[var(--border-focus)] transition-colors cursor-pointer"
           >
             <option value="All">All Statuses</option>
             {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -219,7 +219,7 @@ export default function Complaints() {
           <select 
             value={categoryFilter} 
             onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-            className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[var(--border-focus)] transition-colors"
+            className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs sm:text-sm min-h-[40px] sm:min-h-[36px] focus:outline-none focus:border-[var(--border-focus)] transition-colors cursor-pointer"
           >
             <option value="All">All Categories</option>
             {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -229,7 +229,7 @@ export default function Complaints() {
           <button
             type="button"
             onClick={() => { setShowUnassignedOnly(!showUnassignedOnly); setCurrentPage(1); }}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] sm:min-h-[36px] rounded-lg text-xs font-semibold border transition-all ${
               showUnassignedOnly
                 ? "bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400 shadow-sm ring-1 ring-red-500/30"
                 : "bg-[var(--surface-input)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-red-400"
@@ -245,7 +245,7 @@ export default function Complaints() {
             <select
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
-              className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-2.5 py-2 text-xs focus:outline-none focus:border-[var(--border-focus)] transition-colors cursor-pointer"
+              className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-2.5 py-2 text-xs min-h-[40px] sm:min-h-[36px] focus:outline-none focus:border-[var(--border-focus)] transition-colors cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="priority">Highest Priority</option>
@@ -255,18 +255,22 @@ export default function Complaints() {
         </div>
         
         {(search || statusFilter !== "All" || categoryFilter !== "All" || showUnassignedOnly || sortBy !== "newest") && (
-          <Button variant="ghost" size="sm" onClick={handleClearFilters} className="text-[var(--text-muted)]">
+          <Button variant="ghost" size="sm" onClick={handleClearFilters} className="text-[var(--text-muted)] min-h-[40px] sm:min-h-[36px] self-start lg:self-auto">
             <X size={16} /> Clear filters
           </Button>
         )}
       </div>
 
       {/* 3. Complaints table */}
-      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-md shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
+        {/* Subtle horizontal scroll hint on mobile */}
+        <div className="sm:hidden px-3 py-1.5 bg-surface-muted border-b border-border text-[11px] text-ink-muted flex items-center justify-between">
+          <span>← Scroll horizontally to inspect full table →</span>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[750px]">
             <thead>
-              <tr className="bg-[var(--surface-muted)] text-[var(--text-secondary)] text-sm border-b border-[var(--border-default)]">
+              <tr className="bg-[var(--surface-muted)] text-[var(--text-secondary)] text-xs sm:text-sm border-b border-[var(--border-default)]">
                 <th className="px-4 py-3 font-medium">Priority</th>
                 <th className="px-4 py-3 font-medium">ID</th>
                 <th className="px-4 py-3 font-medium">Category</th>
@@ -313,13 +317,8 @@ export default function Complaints() {
                   </td>
                   <td className="px-4 py-3 capitalize font-medium">{c.category?.replace('_', ' ')}</td>
                   <td className="px-4 py-3">
-                    {c.assigned_officer_name ? (
-                      <div className="flex flex-col">
-                        <span className="font-medium text-xs text-[var(--text-primary)]">{c.assigned_officer_name}</span>
-                        <span className="text-[10px] text-[var(--text-muted)]">{c.assigned_to}</span>
-                      </div>
-                    ) : c.assigned_to ? (
-                      <span className="bg-[var(--surface-muted)] border border-[var(--border-default)] text-[var(--text-secondary)] px-2.5 py-1 rounded-full text-xs font-medium">
+                    {c.assigned_to ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700">
                         {c.assigned_to}
                       </span>
                     ) : (

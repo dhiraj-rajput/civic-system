@@ -100,19 +100,21 @@ export default function PublicTrack() {
 
           {/* Search Box */}
           <form onSubmit={handleSearch} className="max-w-xl mx-auto pt-2">
-            <div className="relative flex items-center shadow-sm">
-              <Search size={18} className="absolute left-3.5 text-ink-muted" />
-              <input
-                type="text"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                placeholder="Enter Complaint ID (e.g. CMP-2026-0001 or NYC 311 Key)..."
-                className="w-full rounded-l-xl border border-r-0 border-border bg-card pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center shadow-sm gap-2 sm:gap-0">
+              <div className="relative flex-1">
+                <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
+                <input
+                  type="text"
+                  value={searchId}
+                  onChange={(e) => setSearchId(e.target.value)}
+                  placeholder="Enter Complaint ID (e.g. CMP-2026-0001 or NYC 311 Key)..."
+                  className="w-full rounded-xl sm:rounded-r-none sm:rounded-l-xl border border-border bg-card pl-10 pr-4 py-3 min-h-[44px] text-xs sm:text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading || !searchId.trim()}
-                className="bg-brand text-white font-medium text-sm px-5 py-3 rounded-r-xl hover:bg-brand-hover disabled:opacity-50 transition-colors flex items-center gap-1.5 shrink-0"
+                className="bg-brand text-white font-medium text-sm px-5 py-3 min-h-[44px] rounded-xl sm:rounded-l-none sm:rounded-r-xl hover:bg-brand-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
               >
                 {loading ? <RefreshCw size={16} className="animate-spin" /> : "Track"}
               </button>
@@ -125,14 +127,14 @@ export default function PublicTrack() {
             <button 
               type="button"
               onClick={() => { setSearchId("CMP-2026-0001"); fetchComplaint("CMP-2026-0001"); }}
-              className="px-2 py-0.5 rounded bg-surface hover:bg-surface-hover border border-border font-mono text-[11px] transition-colors"
+              className="px-2.5 py-1 min-h-[32px] rounded-md bg-surface hover:bg-surface-hover border border-border font-mono text-xs transition-colors"
             >
               CMP-2026-0001
             </button>
             <button 
               type="button"
               onClick={() => { setSearchId("311-2026-0001"); fetchComplaint("311-2026-0001"); }}
-              className="px-2 py-0.5 rounded bg-surface hover:bg-surface-hover border border-border font-mono text-[11px] transition-colors"
+              className="px-2.5 py-1 min-h-[32px] rounded-md bg-surface hover:bg-surface-hover border border-border font-mono text-xs transition-colors"
             >
               311-2026-0001
             </button>

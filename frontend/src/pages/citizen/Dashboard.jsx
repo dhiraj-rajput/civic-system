@@ -72,10 +72,10 @@ export default function CitizenDashboard() {
           <p className="text-ink-secondary mt-1">{today}</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
-          <Button as={Link} to="/citizen/submit" variant="primary" className="py-2.5 flex items-center justify-center gap-1.5 shadow-sm">
+          <Button as={Link} to="/citizen/submit" variant="primary" className="py-2.5 min-h-[44px] flex items-center justify-center gap-1.5 shadow-sm">
             <FilePlus size={16} /> Submit New Report
           </Button>
-          <Button as={Link} to="/citizen/complaints" variant="outline" className="py-2.5 flex items-center justify-center gap-1.5">
+          <Button as={Link} to="/citizen/complaints" variant="outline" className="py-2.5 min-h-[44px] flex items-center justify-center gap-1.5">
             <ListChecks size={16} /> View My Reports
           </Button>
         </div>
@@ -88,14 +88,14 @@ export default function CitizenDashboard() {
       )}
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Total Filed" value={loading ? '-' : total} tone="blue" icon={FileText} />
         <StatCard label="Open" value={loading ? '-' : open} tone="amber" icon={FileWarning} />
         <StatCard label="In Progress" value={loading ? '-' : inProgress} tone="purple" icon={Clock} />
         <StatCard label="Resolved" value={loading ? '-' : resolved} tone="green" icon={CheckCircle2} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         
         {/* Recent Activity */}
         <div className="lg:col-span-2 space-y-4">
@@ -107,21 +107,25 @@ export default function CitizenDashboard() {
             ) : recentComplaints.length > 0 ? (
               <div className="divide-y divide-border">
                 {recentComplaints.map((c) => (
-                  <Link key={c.id} to={`/citizen/complaints/${c.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-surface-hover transition-colors gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="font-mono text-sm text-ink bg-surface-muted px-2 py-1 rounded border border-border">
+                  <Link 
+                    key={c.id} 
+                    to={`/citizen/complaints/${c.id}`} 
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 hover:bg-surface-hover transition-colors gap-2.5 sm:gap-4 min-h-[44px]"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                      <div className="font-mono text-xs sm:text-sm text-ink bg-surface-muted px-2 py-1 rounded border border-border shrink-0">
                         #{c.complaint_id || c.id.substring(0, 8)}
                       </div>
                       {c.nyc311_unique_key && (
-                        <span className="text-[10px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-zinc-700 px-1.5 py-0.5 rounded shrink-0">
                           NYC 311
                         </span>
                       )}
-                      <div className="font-medium text-ink capitalize">{c.category}</div>
+                      <div className="font-medium text-ink capitalize text-xs sm:text-sm truncate max-w-[200px] sm:max-w-xs">{c.category}</div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-0 border-border/40">
                       <StatusBadge status={c.status} />
-                      <span className="text-xs text-ink-muted w-24 text-right">
+                      <span className="text-xs text-ink-muted shrink-0">
                         {formatRelativeTime(c.created_at)}
                       </span>
                     </div>
@@ -129,7 +133,7 @@ export default function CitizenDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="p-12 flex flex-col items-center justify-center text-center">
+              <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center">
                 <div className="w-24 h-24 mb-4 rounded-full bg-brand/5 flex items-center justify-center">
                   <FileText size={40} className="text-brand/40" />
                 </div>

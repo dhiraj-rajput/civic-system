@@ -4,6 +4,12 @@ import { api } from "@/api/client";
 import { useToast } from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
 import StarRating from "@/components/StarRating";
+import MediaGallery from "@/components/MediaGallery";
+
+const isVideo = (url) => {
+  if (!url) return false;
+  return url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".mov") || url.includes("video");
+};
 
 export default function CitizenVerificationCard({
   complaint,
@@ -74,24 +80,46 @@ export default function CitizenVerificationCard({
             {evidence.before_image_url && (
               <div>
                 <span className="text-[11px] font-bold text-ink-muted block mb-1 uppercase tracking-wide">Before Repair:</span>
-                <img
-                  src={evidence.before_image_url}
-                  alt="Before repair"
-                  className="h-44 sm:h-32 w-full object-cover rounded-lg border border-border shadow-sm"
-                />
+                {isVideo(evidence.before_image_url) ? (
+                  <video
+                    src={evidence.before_image_url}
+                    controls
+                    className="h-44 sm:h-36 w-full object-cover rounded-lg border border-border shadow-sm bg-black"
+                  />
+                ) : (
+                  <img
+                    src={evidence.before_image_url}
+                    alt="Before repair"
+                    className="h-44 sm:h-36 w-full object-cover rounded-lg border border-border shadow-sm"
+                  />
+                )}
               </div>
             )}
             {evidence.after_image_url && (
               <div>
                 <span className="text-[11px] font-bold text-success block mb-1 uppercase tracking-wide">After Repair (Resolution Proof):</span>
-                <img
-                  src={evidence.after_image_url}
-                  alt="After repair proof"
-                  className="h-44 sm:h-32 w-full object-cover rounded-lg border border-border shadow-sm"
-                />
+                {isVideo(evidence.after_image_url) ? (
+                  <video
+                    src={evidence.after_image_url}
+                    controls
+                    className="h-44 sm:h-36 w-full object-cover rounded-lg border border-border shadow-sm bg-black"
+                  />
+                ) : (
+                  <img
+                    src={evidence.after_image_url}
+                    alt="After repair proof"
+                    className="h-44 sm:h-36 w-full object-cover rounded-lg border border-border shadow-sm"
+                  />
+                )}
               </div>
             )}
           </div>
+
+          {evidence.media_urls && evidence.media_urls.length > 0 && (
+            <div className="pt-2 border-t border-border/50">
+              <MediaGallery mediaUrls={evidence.media_urls} title="Additional Officer Evidence" />
+            </div>
+          )}
         </div>
       )}
 

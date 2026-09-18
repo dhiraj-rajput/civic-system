@@ -29,6 +29,7 @@ const BOROUGH_COORDINATES = {
   Queens: [40.7282, -73.7949],
   Bronx: [40.8448, -73.8648],
   "Staten Island": [40.5795, -74.1502],
+  Pune: [18.5204, 73.8567],
 };
 
 export default function CivicHeatmap() {
@@ -40,7 +41,7 @@ export default function CivicHeatmap() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPriority, setSelectedPriority] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
-  const [selectedBorough, setSelectedBorough] = useState("All Boroughs");
+  const [selectedBorough, setSelectedBorough] = useState("All Locations");
   const [selectedDays, setSelectedDays] = useState(null);
   const [recurringOnly, setRecurringOnly] = useState(false);
 
@@ -51,14 +52,24 @@ export default function CivicHeatmap() {
   // Selected drilldown item
   const [selectedPin, setSelectedPin] = useState(null);
 
+  const availableLocations = useMemo(() => {
+    const locs = new Set(["All Locations", ...BOROUGHS.filter(b => b !== "All Boroughs")]);
+    points.forEach((p) => {
+      if (p.borough && p.borough.trim() && p.borough !== "Unspecified") {
+        locs.add(p.borough.trim());
+      }
+      if (p.address_text && p.address_text.toLowerCase().includes("pune")) {
+        locs.add("Pune");
+      }
+    });
+    return Array.from(locs);
+  }, [points]);
+
   const handleBoroughChange = (borough) => {
     setSelectedBorough(borough);
-    if (borough !== "All" && borough !== "All Boroughs" && BOROUGH_COORDINATES[borough]) {
+    if (borough !== "All" && borough !== "All Locations" && borough !== "All Boroughs" && BOROUGH_COORDINATES[borough]) {
       setMapCenter(BOROUGH_COORDINATES[borough]);
       setMapZoom(13);
-    } else {
-      setMapCenter([40.7128, -74.0060]);
-      setMapZoom(11);
     }
   };
 
@@ -172,17 +183,17 @@ export default function CivicHeatmap() {
             </select>
           </div>
 
-          {/* Borough Filter */}
+          {/* Location / Borough Filter */}
           <div className="space-y-1">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              Borough
+              Location / City
             </label>
             <select
               value={selectedBorough}
               onChange={(e) => handleBoroughChange(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface-input px-2.5 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+              className="w-full rounded-lg border border-border bg-surface-input px-2.5 py-1.5 text-xs text-ink focus:border-brand focus:outline-none capitalize"
             >
-              {BOROUGHS.map((b) => (
+              {availableLocations.map((b) => (
                 <option key={b} value={b}>
                   {b}
                 </option>

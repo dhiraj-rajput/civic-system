@@ -39,7 +39,7 @@ function SLATimer({ createdAt, status }) {
   }
   if (hoursLeft < 24) {
     return (
-      <span className="text-xs font-medium text-warning-dark bg-warning/20 px-2.5 py-1 rounded-full border border-warning/30">
+      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/30">
         Due in {Math.floor(hoursLeft)}h
       </span>
     );
@@ -308,14 +308,14 @@ export default function OfficerComplaints() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-          <div className="space-y-1.5 flex-1 sm:flex-initial">
+          <div className="space-y-1.5 flex-1 sm:flex-initial min-w-0">
             <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider block">Status Filter</label>
-            <div className="flex flex-wrap items-center gap-1.5 bg-surface-muted p-1.5 rounded-lg border border-border">
+            <div className="flex items-center gap-1.5 bg-surface-muted p-1.5 rounded-lg border border-border overflow-x-auto max-w-full scrollbar-none">
               {FILTERS.map(f => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}
-                  className={`min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center ${
+                  className={`min-h-[38px] sm:min-h-[32px] px-3 sm:px-3.5 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center shrink-0 whitespace-nowrap ${
                     activeFilter === f ? 'bg-card text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
                   }`}
                 >

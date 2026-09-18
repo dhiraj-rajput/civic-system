@@ -46,6 +46,17 @@ async def list_departments():
     return [_to_out(d) for d in docs]
 
 
+@router.get("/categories")
+async def list_categories():
+    """Returns all available civic categories (default + dynamically created by admins)."""
+    db = get_db()
+    dept_cats = await db.departments.distinct("category")
+    complaint_cats = await db.complaints.distinct("category")
+    default_cats = ["pothole", "garbage", "streetlight", "water_supply", "other"]
+    all_cats = sorted(list(set(dept_cats + complaint_cats + default_cats)))
+    return [{"value": c, "label": c.replace("_", " ").title()} for c in all_cats if c]
+
+
 import re
 from pymongo.errors import DuplicateKeyError
 
@@ -56,6 +67,7 @@ async def create_department(
 ):
     db = get_db()
     clean_name = payload.name.strip()
+    clean_category = payload.category.strip().lower().replace(" ", "_")
     escaped_name = re.escape(clean_name)
     # Check if department with exact same name already exists
     if await db.departments.find_one({"name": {"$regex": f"^{escaped_name}$", "$options": "i"}}):
@@ -63,19 +75,20 @@ async def create_department(
             status.HTTP_400_BAD_REQUEST,
             f"A department named '{clean_name}' already exists.",
         )
-    if await db.departments.find_one({"category": payload.category}):
+    if await db.departments.find_one({"category": clean_category}):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"A department for category '{payload.category}' already exists.",
+            f"A department for category '{clean_category}' already exists.",
         )
     doc = payload.model_dump()
     doc["name"] = clean_name
+    doc["category"] = clean_category
     try:
         result = await db.departments.insert_one(doc)
     except DuplicateKeyError:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"A department with category '{payload.category}' already exists.",
+            f"A department with category '{clean_category}' already exists.",
         )
     doc["_id"] = result.inserted_id
     return _to_out(doc)

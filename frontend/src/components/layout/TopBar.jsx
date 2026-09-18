@@ -1,4 +1,4 @@
-import { Menu, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
 import ThemeToggle from "../ui/ThemeToggle.jsx";
 import NotificationBell from "../NotificationBell.jsx";
 import { CivicEmblem } from "../CivicLogo.jsx";
@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-export default function TopBar({ onMenuClick }) {
+export default function TopBar({ onMenuClick, onToggleSidebar, sidebarCollapsed }) {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -31,6 +31,16 @@ export default function TopBar({ onMenuClick }) {
         >
           <Menu size={20} />
         </button>
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden md:flex rounded-lg p-2 text-ink-secondary hover:bg-surface hover:text-ink transition-colors"
+          >
+            {sidebarCollapsed ? <PanelLeft size={19} /> : <PanelLeftClose size={19} />}
+          </button>
+        )}
         <div className="flex items-center gap-2 md:hidden">
           <CivicEmblem className="w-5 h-5 text-brand" />
           <span className="font-serif font-bold text-sm tracking-tight text-ink">CivicPortal</span>

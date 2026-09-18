@@ -13,6 +13,7 @@ import PublicTrack from "./pages/PublicTrack.jsx";
 import CitizenDashboard from "./pages/citizen/Dashboard.jsx";
 import CitizenSubmit from "./pages/citizen/Submit.jsx";
 import CitizenComplaints from "./pages/citizen/Complaints.jsx";
+import CitizenTrack from "./pages/citizen/TrackComplaint.jsx";
 
 import OfficerDashboard from "./pages/officer/Dashboard.jsx";
 import OfficerComplaints from "./pages/officer/Complaints.jsx";
@@ -44,6 +45,8 @@ export default function App() {
                   <Route path="/submit" element={<CitizenSubmit />} />
                   <Route path="/complaints" element={<CitizenComplaints />} />
                   <Route path="/complaints/:id" element={<ComplaintDetail />} />
+                  <Route path="/track" element={<CitizenTrack />} />
+                  <Route path="/track/:id" element={<CitizenTrack />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>

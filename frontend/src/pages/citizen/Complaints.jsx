@@ -132,7 +132,7 @@ export default function CitizenComplaints() {
           onClick={() => navigate('/citizen/submit')}
           variant="primary" 
           size="sm"
-          className="flex items-center justify-center gap-1.5 shrink-0 w-full sm:w-auto"
+          className="flex items-center justify-center gap-1.5 shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
         >
           <PlusCircle size={15} /> New Report
         </Button>
@@ -141,7 +141,7 @@ export default function CitizenComplaints() {
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 sm:pb-0 scrollbar-none max-w-full">
           {TABS.map((tab) => {
             const count = counts[tab] || 0;
             const isActive = activeTab === tab;
@@ -150,7 +150,7 @@ export default function CitizenComplaints() {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 min-h-[38px] sm:min-h-[34px] rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
                   isActive
                     ? 'bg-brand text-white shadow-sm'
                     : 'bg-surface hover:bg-surface-hover text-ink-secondary border border-border'
@@ -175,7 +175,7 @@ export default function CitizenComplaints() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search reports..."
-            className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-1.5 text-xs text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
+            className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-[36px] text-xs text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
           />
         </div>
       </div>
