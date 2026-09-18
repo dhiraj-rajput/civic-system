@@ -9,10 +9,17 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    const favicon = document.getElementById('app-favicon') || document.querySelector("link[rel*='icon']");
     if (theme === 'dark') {
       root.classList.add('dark');
+      if (favicon) {
+        favicon.href = `/favicon-dark.svg?v=${Date.now()}`;
+      }
     } else {
       root.classList.remove('dark');
+      if (favicon) {
+        favicon.href = `/favicon-light.svg?v=${Date.now()}`;
+      }
     }
     localStorage.setItem('civic_theme', theme);
   }, [theme]);

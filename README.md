@@ -1,6 +1,24 @@
-# 🏛️ CivicPortal — Smart Civic Complaint & Issue Management System
+# 🏛️ CivicPortal — Autonomous Civic Complaint & Issue Management System
+### *Next-Generation Municipal Infrastructure Triage, AI Dispatch & Citizen Verification Engine*
 
-DPA Hackathon 2026 · Case Study 1 · Full-stack: FastAPI + MongoDB + React 19 + Tailwind v4.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React 19](https://img.shields.io/badge/React-19.0-61DAFB.svg?style=flat&logo=react&logoColor=black)](https://react.dev)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.0_2dsphere-47A248.svg?style=flat&logo=mongodb&logoColor=white)](https://www.mongodb.com)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-1.5_Flash-4285F4.svg?style=flat&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Docker](https://img.shields.io/badge/Docker_Compose-Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com)
+[![Leaflet GIS](https://img.shields.io/badge/Leaflet-GIS_Heatmap-199900.svg?style=flat&logo=leaflet&logoColor=white)](https://leafletjs.com)
+[![TailwindCSS v4](https://img.shields.io/badge/TailwindCSS-v4.0-38B2AC.svg?style=flat&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+
+```
+  ____ _       _      ____             _        _ 
+ / ___(_)_   _(_) ___|  _ \ ___  _ __ | |_ __ _| |
+| |   | \ \ / / |/ __| |_) / _ \| '__|| __/ _` | |
+| |___| |\ V /| | (__|  __/ (_) | |   | || (_| | |
+ \____|_| \_/ |_|\___|_|   \___/|_|    \__\__,_|_|
+ Autonomous Urban Triage & Municipal Telemetry Platform
+```
+
+DPA Hackathon 2026 · Case Study 1 · Full-stack: FastAPI + MongoDB 8 + React 19 + Tailwind v4.
 
 ---
 

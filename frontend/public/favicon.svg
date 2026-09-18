@@ -1,13 +1,18 @@
-<svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6" />
-      <stop offset="50%" stop-color="#06b6d4" />
-      <stop offset="100%" stop-color="#10b981" />
-    </linearGradient>
-  </defs>
-  <path d="M24 4L7 11V23C7 33.5 14.3 43.1 24 45.8C33.7 43.1 41 33.5 41 23V11L24 4Z" fill="#0f172a" stroke="url(#shieldGrad)" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M24 8L11 13.7V23C11 31.4 16.6 39.1 24 41.5C31.4 39.1 37 31.4 37 23V13.7L24 8Z" fill="url(#shieldGrad)" fill-opacity="0.2"/>
-  <path d="M17 31V23H21V31M21 31V18H27V31M27 31V25H31V31" stroke="url(#shieldGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="24" cy="14" r="3" fill="#38bdf8" />
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .shield-outer { fill: #0f172a; stroke: #3b82f6; }
+    .shield-inner { fill: #1e293b; stroke: #475569; }
+    .pillars { stroke: #ffffff; }
+    .pin { fill: #38bdf8; }
+    @media (prefers-color-scheme: dark) {
+      .shield-outer { fill: #f59e0b; stroke: #fbbf24; }
+      .shield-inner { fill: #18181b; stroke: #fbbf24; }
+      .pillars { stroke: #fbbf24; }
+      .pin { fill: #fbbf24; }
+    }
+  </style>
+  <path class="shield-outer" d="M16 2.5L5 6.5V15.5C5 22.5 9.8 28.9 16 30.5C22.2 28.9 27 22.5 27 15.5V6.5L16 2.5Z" stroke-width="1.2" stroke-linejoin="round"/>
+  <path class="shield-inner" d="M16 5.5L7.5 8.7V15.5C7.5 21 11.2 26 16 27.5C20.8 26 24.5 21 24.5 15.5V8.7L16 5.5Z" stroke-width="1.2"/>
+  <path class="pillars" d="M11 20V14.5H13.5V20M14.75 20V12H17.25V20M18.5 20V14.5H21V20" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle class="pin" cx="16" cy="9.5" r="1.6" />
 </svg>
