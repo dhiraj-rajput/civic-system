@@ -12,7 +12,7 @@ import sys
 import urllib.request
 import urllib.parse
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Ensure backend root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -120,7 +120,7 @@ async def seed_nyc_data(total_target: int = 500, batch_size: int = 250):
         offset += len(records)
 
         complaint_docs = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         for idx, rec in enumerate(records):
             try:

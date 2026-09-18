@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { BarChart3, Clock, AlertTriangle, RefreshCw, Map, Calendar } from "lucide-react";
+import { BarChart3, Clock, AlertTriangle, RefreshCw, Map } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import { useToast } from "../../components/ui/Toast.jsx";
@@ -9,7 +9,7 @@ import SimpleLineChart from "../../components/charts/SimpleLineChart.jsx";
 import { PriorityBadge } from "../../components/Badges.jsx";
 import Button from "../../components/ui/Button.jsx";
 import CivicHeatmap from "../../components/CivicHeatmap.jsx";
-import { HeatmapChart } from "../../components/ui/heatmaps.jsx";
+import IntakePeakDistribution from "../../components/charts/IntakePeakDistribution.jsx";
 
 export default function Analytics() {
   const { toast } = useToast();
@@ -55,9 +55,9 @@ export default function Analytics() {
 
   // SLA Circle Math (Radius = 45, Circumference = 282.7)
   const compliancePercent = sla ? Math.round(sla.sla_compliance_pct || 0) : 0;
-  let slaColor = "var(--brand-danger)";
-  if (compliancePercent > 80) slaColor = "var(--brand-success)";
-  else if (compliancePercent >= 60) slaColor = "var(--brand-warning)";
+  let slaColor = "#ef4444"; // Red
+  if (compliancePercent > 80) slaColor = "#22c55e"; // Green
+  else if (compliancePercent >= 60) slaColor = "#f59e0b"; // Amber
   
   const dashArray = `${compliancePercent * 2.827} 282.7`;
 
@@ -82,15 +82,20 @@ export default function Analytics() {
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-8 animate-in fade-in duration-300">
       
       {/* 1. Page Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <BarChart3 size={24} className="text-[var(--brand-primary)]" />
-          Analytics & Insights
-        </h1>
-        <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
-          Last updated: {getRelativeTimeMinutes()}
-          <Button variant="outline" size="sm" onClick={loadData} isLoading={loading}>
-            <RefreshCw size={14} /> Refresh
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+        <div>
+          <h1 className="font-serif text-2xl font-bold text-ink flex items-center gap-2.5">
+            <BarChart3 size={24} className="text-brand" />
+            Operational Analytics & Telemetry
+          </h1>
+          <p className="text-xs text-ink-muted mt-1">
+            Real-time municipal performance KPIs, dispatch SLA thresholds, and geographic trends.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-ink-muted">
+          <span>Synced: {getRelativeTimeMinutes()}</span>
+          <Button variant="outline" size="sm" onClick={loadData} isLoading={loading} className="flex items-center gap-1.5">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
         </div>
       </div>
@@ -100,9 +105,9 @@ export default function Analytics() {
         <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
           
           <div className="flex items-center gap-8">
-            <div className="relative w-32 h-32 flex items-center justify-center">
+            <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border-default)" strokeWidth="8" />
+                <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" className="text-border" strokeWidth="8" />
                 <circle 
                   cx="50" cy="50" r="45" fill="none" 
                   stroke={slaColor} strokeWidth="8" 
@@ -112,42 +117,65 @@ export default function Analytics() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-2xl font-bold" style={{ color: slaColor }}>{compliancePercent}%</span>
+                <span className="text-[10px] text-ink-muted uppercase font-semibold tracking-wider">Compliance</span>
               </div>
             </div>
             
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">SLA Compliance</h2>
-              <div className="text-sm text-[var(--text-secondary)]">Target resolution within selected timeframe</div>
-              <div className="mt-2 flex gap-2">
-                {[48, 72, 96].map(hours => (
+            <div className="space-y-2">
+              <h2 className="text-base font-bold text-ink">SLA Compliance Target</h2>
+              <div className="text-xs text-ink-secondary">Municipal resolution window for incoming citizen cases</div>
+              <div className="mt-2 flex items-center gap-2">
+                {['48', '72', '96'].map(hours => (
                   <button
                     key={hours}
-                    onClick={() => setSlaThreshold(hours.toString())}
-                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${slaThreshold === hours.toString() ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'bg-[var(--surface-input)] text-[var(--text-secondary)] border-[var(--border-default)] hover:border-[var(--brand-primary)]'}`}
+                    type="button"
+                    onClick={() => setSlaThreshold(hours)}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
+                      slaThreshold === hours 
+                        ? 'bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 border-transparent shadow-sm' 
+                        : 'bg-surface-muted text-ink-secondary border-border hover:border-brand/40'
+                    }`}
                   >
-                    {hours}h
+                    {hours} Hours
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-1 w-full md:pl-8 md:border-l border-[var(--border-default)]">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-1 w-full md:pl-8 md:border-l border-border">
             <div>
-              <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1"><Clock size={14} /> Avg Resolution</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--text-primary)]">{sla?.avg_resolution_hours ? Math.round(sla.avg_resolution_hours) : "—"} <span className="text-sm text-[var(--text-muted)] font-normal">hrs</span></div>
+              <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+                <Clock size={13} /> Avg Resolution
+              </div>
+              <div className="text-2xl font-bold mt-1 text-ink">
+                {sla?.avg_resolution_hours ? Math.round(sla.avg_resolution_hours) : "—"} 
+                <span className="text-xs text-ink-muted font-normal ml-1">hrs</span>
+              </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Within SLA</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--brand-success)]">{sla?.resolved_within_sla ?? 0}</div>
+              <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+                Within SLA
+              </div>
+              <div className="text-2xl font-bold mt-1 text-success">
+                {sla?.resolved_within_sla ?? 0}
+              </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Breaching Now</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--brand-danger)]">{sla?.breaching_sla_now ?? 0}</div>
+              <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+                Breaching SLA
+              </div>
+              <div className="text-2xl font-bold mt-1 text-danger">
+                {sla?.breaching_sla_now ?? 0}
+              </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-[var(--text-muted)] flex items-center gap-1">Open Count</div>
-              <div className="text-2xl font-semibold mt-1 text-[var(--text-primary)]">{sla?.open_count ?? 0}</div>
+              <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider flex items-center gap-1">
+                Active Queue
+              </div>
+              <div className="text-2xl font-bold mt-1 text-ink">
+                {sla?.open_count ?? 0}
+              </div>
             </div>
           </div>
           
@@ -155,15 +183,15 @@ export default function Analytics() {
       </Panel>
 
       {/* 3. Distribution charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Panel className="p-4 flex flex-col">
-          <h2 className="text-sm font-semibold mb-6 text-[var(--text-primary)]">Status Distribution</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Panel className="p-5 flex flex-col">
+          <h2 className="text-sm font-semibold mb-4 text-ink">Status Distribution</h2>
           <div className="flex-1">
             <MiniBarChart data={statusData} />
           </div>
         </Panel>
-        <Panel className="p-4 flex flex-col">
-          <h2 className="text-sm font-semibold mb-6 text-[var(--text-primary)]">Priority Distribution</h2>
+        <Panel className="p-5 flex flex-col">
+          <h2 className="text-sm font-semibold mb-4 text-ink">Priority Distribution</h2>
           <div className="flex-1">
             <MiniBarChart data={priorityData} />
           </div>
@@ -171,15 +199,23 @@ export default function Analytics() {
       </div>
 
       {/* 4. Trend chart */}
-      <Panel className="p-4">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">30-Day Trend</h2>
-          <div className="flex bg-[var(--surface-input)] rounded-md border border-[var(--border-default)] p-1">
+      <Panel className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">30-Day Activity Curve</h2>
+            <p className="text-xs text-ink-muted">Historical volume comparison of incoming vs resolved issues</p>
+          </div>
+          <div className="flex bg-surface-muted rounded-md border border-border p-1">
             {["Filed", "Resolved", "Both"].map(opt => (
               <button 
                 key={opt}
+                type="button"
                 onClick={() => setTrendToggle(opt)}
-                className={`px-3 py-1 text-xs rounded transition-colors ${trendToggle === opt ? 'bg-[var(--surface-card)] shadow-sm text-[var(--text-primary)] font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
+                className={`px-3 py-1 text-xs font-medium rounded transition-all ${
+                  trendToggle === opt 
+                    ? 'bg-card shadow-sm text-ink font-semibold' 
+                    : 'text-ink-muted hover:text-ink'
+                }`}
               >
                 {opt}
               </button>
@@ -192,115 +228,96 @@ export default function Analytics() {
       {/* 5. Geospatial Civic Heatmap */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Map size={20} className="text-[var(--brand-primary)]" />
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">Geospatial Incident Heatmap</h2>
+          <Map size={18} className="text-brand" />
+          <h2 className="text-lg font-bold text-ink">Geospatial Incident Heatmap</h2>
         </div>
         <CivicHeatmap />
       </div>
 
-      {/* 6. Hourly Density Matrix Heatmap */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar size={20} className="text-[var(--brand-primary)]" />
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">Intake Frequency Density Matrix (Day vs Hour)</h2>
-        </div>
-        <HeatmapChart width={1150} height={380} events={true} />
-      </div>
+      {/* 6. Hourly Intake Distribution & Peak Load (Replaced blocky matrix) */}
+      <IntakePeakDistribution />
 
       {/* 7. Hotspots & Aging Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Hotspots */}
-        <Panel className="p-4">
+        <Panel className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={18} className="text-[var(--brand-warning)]" />
+            <AlertTriangle size={18} className="text-warning" />
             <div>
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">High Density Areas</h2>
-              <p className="text-xs text-[var(--text-muted)]">Hotspots by complaint volume and priority</p>
+              <h2 className="text-sm font-semibold text-ink">High Density Areas</h2>
+              <p className="text-xs text-ink-muted">Hotspots by complaint volume and urgency</p>
             </div>
           </div>
           <div className="space-y-3">
             {hotspots && hotspots.length > 0 ? hotspots.slice(0, 5).map((h, i) => {
-              // Heat color bg based on rank
-              const heatColors = [
-                "bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-800/50",
-                "bg-orange-100 dark:bg-orange-900/40 border-orange-200 dark:border-orange-800/50",
-                "bg-amber-100 dark:bg-amber-900/40 border-amber-200 dark:border-amber-800/50",
-                "bg-yellow-50 dark:bg-yellow-900/30 border-yellow-100 dark:border-yellow-800/30",
-                "bg-[var(--surface-muted)] border-[var(--border-default)]"
-              ];
-              
               const coordLat = h._id?.lat || (h.lat ?? 0);
               const coordLng = h._id?.lng || (h.lng ?? 0);
               const category = h._id?.category || h.category;
 
               return (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-md border ${heatColors[i]}`}>
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface-muted/40 hover:bg-surface-muted/70 transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-bold text-[var(--text-secondary)] opacity-70">#{i + 1}</span>
+                    <span className="font-mono text-xs font-bold text-ink-muted">#{i + 1}</span>
                     <div>
-                      <div className="font-medium text-sm text-[var(--text-primary)] capitalize">{category}</div>
-                      <div className="text-xs text-[var(--text-muted)] font-mono">{coordLat.toFixed(4)}, {coordLng.toFixed(4)}</div>
+                      <div className="font-semibold text-xs text-ink capitalize">{category}</div>
+                      <div className="text-[11px] text-ink-muted font-mono">{coordLat.toFixed(4)}, {coordLng.toFixed(4)}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium text-sm text-[var(--text-primary)]">{h.complaint_count} issues</div>
-                    <div className="text-xs text-[var(--brand-danger)] font-medium">Critical/High: {h.critical_or_high_count || 0}</div>
+                    <div className="font-semibold text-xs text-ink">{h.complaint_count} issues</div>
+                    <div className="text-[11px] text-danger font-medium">Critical/High: {h.critical_or_high_count || 0}</div>
                   </div>
                 </div>
               );
             }) : (
-              <div className="text-sm text-[var(--text-muted)] text-center py-8">No hotspot data available</div>
+              <div className="text-xs text-ink-muted text-center py-8">No hotspot data available</div>
             )}
           </div>
         </Panel>
 
-        {/* 6. Aging complaints */}
-        <Panel className="p-4 flex flex-col">
+        {/* Aging complaints */}
+        <Panel className="p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-4">
-            <Clock size={18} className="text-[var(--brand-danger)]" />
+            <Clock size={18} className="text-danger" />
             <div>
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Aging Complaints</h2>
-              <p className="text-xs text-[var(--text-muted)]">Unresolved issues older than {slaThreshold} hours</p>
+              <h2 className="text-sm font-semibold text-ink">Aging Unresolved Complaints</h2>
+              <p className="text-xs text-ink-muted">Complaints exceeding {slaThreshold} hours in queue</p>
             </div>
           </div>
           
-          <div className="flex-1 overflow-auto max-h-[400px]">
+          <div className="flex-1 overflow-auto max-h-[350px]">
             {aging && aging.length > 0 ? (
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-[var(--border-default)] text-[var(--text-muted)]">
-                    <th className="pb-2 font-medium">ID</th>
-                    <th className="pb-2 font-medium">Category</th>
-                    <th className="pb-2 font-medium">Age</th>
-                    <th className="pb-2 font-medium">Priority</th>
-                    <th className="pb-2 font-medium">Dept</th>
+                  <tr className="border-b border-border text-ink-muted uppercase tracking-wider text-[10px]">
+                    <th className="pb-2 font-semibold">ID</th>
+                    <th className="pb-2 font-semibold">Category</th>
+                    <th className="pb-2 font-semibold">Age</th>
+                    <th className="pb-2 font-semibold">Priority</th>
+                    <th className="pb-2 font-semibold">Dept</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-default)]">
+                <tbody className="divide-y divide-border/60">
                   {aging.sort((a, b) => (b.hours_elapsed || 0) - (a.hours_elapsed || 0)).map((a, i) => {
                     const hrs = a.hours_elapsed || 0;
-                    let rowColor = "";
-                    if (hrs > 96) rowColor = "bg-red-50/50 dark:bg-red-900/10 text-red-700 dark:text-red-400 font-medium";
-                    else if (hrs > 72) rowColor = "bg-orange-50/50 dark:bg-orange-900/10 text-orange-700 dark:text-orange-400";
-                    else if (hrs > 48) rowColor = "bg-amber-50/50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400";
-
                     return (
-                      <tr key={i} className={rowColor}>
-                        <td className="py-2 pr-2 font-mono text-xs">{a.complaint_id}</td>
-                        <td className="py-2 pr-2 capitalize">{a.category}</td>
-                        <td className="py-2 pr-2 font-medium">{Math.round(hrs)}h</td>
-                        <td className="py-2 pr-2"><PriorityBadge priority={a.priority_label || 'Low'} /></td>
-                        <td className="py-2 text-xs truncate max-w-[100px]">{a.assigned_to || 'Unassigned'}</td>
+                      <tr key={i} className="hover:bg-surface-hover/50 transition-colors">
+                        <td className="py-2.5 pr-2 font-mono text-[11px] font-medium text-ink">{a.complaint_id}</td>
+                        <td className="py-2.5 pr-2 capitalize text-ink-secondary">{a.category}</td>
+                        <td className="py-2.5 pr-2 font-bold text-danger">{Math.round(hrs)}h</td>
+                        <td className="py-2.5 pr-2"><PriorityBadge priority={a.priority_label || 'Low'} /></td>
+                        <td className="py-2.5 text-[11px] text-ink-secondary truncate max-w-[100px]">{a.assigned_to || 'Unassigned'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             ) : (
-              <div className="text-sm text-[var(--text-muted)] text-center py-8 flex flex-col items-center justify-center h-full">
-                <div className="text-4xl mb-2">🎉</div>
-                No aging complaints found!
+              <div className="text-xs text-ink-muted text-center py-12 flex flex-col items-center justify-center h-full space-y-2">
+                <div className="text-3xl">🎉</div>
+                <p className="font-medium text-ink">No aging complaints found!</p>
+                <p>All active municipal issues are within SLA tolerance.</p>
               </div>
             )}
           </div>

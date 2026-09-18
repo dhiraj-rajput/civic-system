@@ -2,7 +2,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
-from app.services.ai_extract import analyze_complaint, classify_complaint
+from app.services.ai_extract import classify_complaint
+from app.services.gemini_service import analyze_with_gemini
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -16,7 +17,7 @@ class ClassifyResponse(BaseModel):
 
 @router.post("/analyze")
 async def api_analyze_complaint(req: AnalyzeRequest) -> Dict[str, Any]:
-    return analyze_complaint(req.description)
+    return await analyze_with_gemini(req.description)
 
 @router.post("/classify", response_model=ClassifyResponse)
 async def api_classify_complaint(req: AnalyzeRequest):

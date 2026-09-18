@@ -28,6 +28,7 @@ from app.services.priority import (
 )
 from app.services.assignment import get_smart_officer_recommendation
 from app.services.ai_extract import analyze_complaint
+from app.services.gemini_service import analyze_with_gemini
 
 router = APIRouter(prefix="/complaints", tags=["complaints"])
 
@@ -189,8 +190,8 @@ async def create_complaint(
     result = await db.complaints.insert_one(doc)
     doc["_id"] = result.inserted_id
 
-    # AI Extraction & Urgency
-    ai_result = analyze_complaint(payload.description)
+    # AI Extraction & Urgency (Gemini AI with rule-based fallback)
+    ai_result = await analyze_with_gemini(payload.description)
     doc["ai_analysis"] = {
         "category": ai_result["category"],
         "category_suggestion": ai_result["category_suggestion"],

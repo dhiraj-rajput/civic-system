@@ -72,23 +72,61 @@ export default function SubmitComplaint() {
     };
   }, [typingTimeout]);
 
+  const NYC_BOROUGHS = [
+    { name: 'Manhattan', lat: '40.7831', lng: '-73.9712', address: 'Broadway & 42nd St, Manhattan, NY 10036' },
+    { name: 'Brooklyn', lat: '40.6782', lng: '-73.9442', address: 'Cadman Plaza, Brooklyn, NY 11201' },
+    { name: 'Queens', lat: '40.7282', lng: '-73.7949', address: 'Queens Blvd, Queens, NY 11435' },
+    { name: 'Bronx', lat: '40.8448', lng: '-73.8648', address: 'Grand Concourse, Bronx, NY 10451' },
+    { name: 'Staten Island', lat: '40.5795', lng: '-74.1502', address: 'Hyatt St, Staten Island, NY 10301' },
+  ];
+
+  const reverseGeocode = async (latitude, longitude) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.display_name) {
+          setAddress(data.display_name);
+        }
+      }
+    } catch (e) {
+      // fallback without blocking
+    }
+  };
+
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.info('Browser geolocation unavailable. Click any borough chip below.');
       return;
     }
     
-    toast.info('Detecting current coordinates...');
+    toast.info('Detecting coordinates...');
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLat(position.coords.latitude.toFixed(6));
-        setLng(position.coords.longitude.toFixed(6));
+        const newLat = position.coords.latitude.toFixed(6);
+        const newLng = position.coords.longitude.toFixed(6);
+        setLat(newLat);
+        setLng(newLng);
         toast.success('Location updated from device GPS');
+        reverseGeocode(newLat, newLng);
       },
       (error) => {
-        toast.error('Unable to retrieve device location');
-      }
+        // Fallback gracefully without a harsh error
+        const fallback = NYC_BOROUGHS[0];
+        setLat(fallback.lat);
+        setLng(fallback.lng);
+        if (!address) setAddress(fallback.address);
+        toast.info('GPS permission prompt was dismissed or unavailable. Set to Manhattan (use borough chips or click map).');
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
+  };
+
+  const handleBoroughSelect = (b) => {
+    setLat(b.lat);
+    setLng(b.lng);
+    setAddress(b.address);
+    toast.info(`Location set to ${b.name}`);
   };
 
   const handleSubmit = async (e) => {
@@ -283,16 +321,31 @@ export default function SubmitComplaint() {
 
         {/* Location & Map Section */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <label className="block text-sm font-medium text-ink">
                 Location Details & Interactive Pin <span className="text-danger">*</span>
               </label>
-              <p className="text-xs text-ink-muted">Drag or click on the map to place the incident pin.</p>
+              <p className="text-xs text-ink-muted">Drag or click on the map to place the incident pin, or select a NYC borough.</p>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
-              <MapPin size={14} /> My GPS
+            <Button type="button" variant="outline" size="sm" onClick={handleGetLocation} className="shrink-0 flex items-center gap-1.5">
+              <MapPin size={14} className="text-brand" /> My GPS
             </Button>
+          </div>
+
+          {/* Quick Borough Chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-muted font-medium">Quick Borough:</span>
+            {NYC_BOROUGHS.map((b) => (
+              <button
+                key={b.name}
+                type="button"
+                onClick={() => handleBoroughSelect(b)}
+                className="text-xs px-2.5 py-1 rounded-full border border-border bg-surface-muted hover:border-brand/40 hover:text-brand transition-colors text-ink-secondary font-medium"
+              >
+                {b.name}
+              </button>
+            ))}
           </div>
 
           {/* Interactive Map Picker */}
@@ -301,8 +354,11 @@ export default function SubmitComplaint() {
             lat={parseFloat(lat) || 40.7128}
             lng={parseFloat(lng) || -74.0060}
             onLocationChange={({ lat: newLat, lng: newLng }) => {
-              setLat(newLat.toString());
-              setLng(newLng.toString());
+              const sLat = Number(newLat).toFixed(6);
+              const sLng = Number(newLng).toFixed(6);
+              setLat(sLat);
+              setLng(sLng);
+              reverseGeocode(sLat, sLng);
             }}
             style={{ height: "300px", width: "100%" }}
           />

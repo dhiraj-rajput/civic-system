@@ -36,19 +36,48 @@ docker compose down -v     # stop AND wipe database (WARNING: deletes all data)
 | **Swagger / API Docs** | http://localhost:8000/docs |
 | **Health check** | http://localhost:8000/health |
 
-### Step 4 — Seed demo data & users (Recommended)
-Populate the database with all roles (Admin, Officers, Citizens) and 12 sample complaints with a single command:
+### Step 4 — Seed demo users & default departments
+Populate the database with all roles (Admin, Officers, Citizens) and demo accounts:
 ```bash
-# Run from project root using Bun:
-bun scripts/seed.mjs
-
-# Or from frontend:
-cd frontend && bun run seed
-
-# Or inside Docker:
+# Inside Docker:
 docker compose exec backend python seed.py
 ```
-> 💡 This automatically bootstraps the admin (`admin@city.gov` / `Admin@1234`), 5 officers across 5 departments, 3 citizens, and 12 realistic complaints across all statuses and priorities!
+> 💡 This bootstraps the system admin (`admin@city.gov` / `Admin@1234`), 5 department officers, 3 citizens, and default municipal departments!
+
+### Step 5 — Seed 1,000+ Authentic NYC 311 Records (NYC Open Data)
+
+To test the system at real municipal scale with **1,000+ live NYC 311 complaints**, real GPS coordinates across all 5 boroughs, agency dispatch workflows, and duplicate clustering:
+
+```bash
+# Inside Docker (recommended on any laptop):
+docker compose exec backend python seed_nyc311_full.py --limit 1000 --batch-size 250
+
+# Or locally (if running outside Docker):
+cd backend
+python seed_nyc311_full.py --limit 1000 --batch-size 250
+```
+
+> 🗽 **What this fetches & processes:**
+> - Queries the official **NYC Open Data Socrata API** (`erm2-nwe9.json`) in batches.
+> - Ingests 1,000 real civic incident reports across **Manhattan, Brooklyn, Queens, The Bronx, and Staten Island**.
+> - Preserves authentic **agencies (NYPD, DSNY, DOT, DEP, DOB)**, descriptors, street addresses, and resolution notes.
+> - Automatically runs our **4-step geospatial & NLP duplicate clustering algorithm**.
+> - Automatically calculates **0–100 explainable priority scores** with SLA breach forecasting.
+
+### Step 6 — Setup Google Gemini AI (Optional / Recommended)
+
+CivicPortal includes native integration with **Google Gemini 1.5 Flash** for generative category detection, urgency classification, and executive summarization:
+
+1. Obtain a free Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+2. Open your `.env` file in the project root and add your key:
+   ```env
+   GEMINI_API_KEY=AIzaSy...
+   ```
+3. Restart the backend container:
+   ```bash
+   docker compose restart backend
+   ```
+> 💡 **Graceful Offline Fallback:** If `GEMINI_API_KEY` is not provided or quota is exceeded, the system automatically and transparently falls back to our high-speed local rule-based NLP engine (`ai_extract.py`), ensuring 100% uninterrupted operation on any laptop.
 
 ### View logs per service
 ```bash
