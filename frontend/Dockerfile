@@ -1,14 +1,19 @@
-FROM oven/bun:1.4.2-alpine
+FROM oven/bun:1.4.2-alpine AS build
 
 WORKDIR /app
 
-# Copy Bun lockfile and package manifest first for dependency caching
 COPY package.json bun.lock ./
-
-RUN bun install 
+RUN bun install --frozen-lockfile
 
 COPY . .
 
-EXPOSE 5173
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
+RUN bun run build
 
-CMD ["bun", "run", "dev", "--host", "0.0.0.0"]
+FROM nginx:1.29-alpine
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80

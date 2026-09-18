@@ -4,4 +4,6 @@ __pycache__/
 .pytest_cache/
 tests/
 .env
+.env.*
+uploads/
 node_modules/
