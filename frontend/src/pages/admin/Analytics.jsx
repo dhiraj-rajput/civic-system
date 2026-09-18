@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { BarChart3, Clock, AlertTriangle, RefreshCw } from "lucide-react";
+import { BarChart3, Clock, AlertTriangle, RefreshCw, Map, Calendar } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import { useToast } from "../../components/ui/Toast.jsx";
@@ -8,6 +8,8 @@ import MiniBarChart from "../../components/charts/MiniBarChart.jsx";
 import SimpleLineChart from "../../components/charts/SimpleLineChart.jsx";
 import { PriorityBadge } from "../../components/Badges.jsx";
 import Button from "../../components/ui/Button.jsx";
+import CivicHeatmap from "../../components/CivicHeatmap.jsx";
+import { HeatmapChart } from "../../components/ui/heatmaps.jsx";
 
 export default function Analytics() {
   const { toast } = useToast();
@@ -187,7 +189,25 @@ export default function Analytics() {
         <SimpleLineChart data={filteredTrend} />
       </Panel>
 
-      {/* 5. Hotspots & Aging Section */}
+      {/* 5. Geospatial Civic Heatmap */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Map size={20} className="text-[var(--brand-primary)]" />
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Geospatial Incident Heatmap</h2>
+        </div>
+        <CivicHeatmap />
+      </div>
+
+      {/* 6. Hourly Density Matrix Heatmap */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar size={20} className="text-[var(--brand-primary)]" />
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Intake Frequency Density Matrix (Day vs Hour)</h2>
+        </div>
+        <HeatmapChart width={1150} height={380} events={true} />
+      </div>
+
+      {/* 7. Hotspots & Aging Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Hotspots */}

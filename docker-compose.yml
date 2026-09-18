@@ -70,7 +70,21 @@ services:
       - --host
       - 0.0.0.0
 
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: civic-garage
+    restart: unless-stopped
+    ports:
+      - "3900:3900"
+      - "3902:3902"
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+
 volumes:
   mongo_data:
   backend_venv:
   frontend_bun_modules:
+  garage_meta:
+  garage_data:

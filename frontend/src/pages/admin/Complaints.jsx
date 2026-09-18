@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ListChecks, Trash2, UserPlus, X, RefreshCw, MessageSquare, Sparkles, MapPin, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ListChecks, Trash2, UserPlus, X, RefreshCw, Sparkles, ChevronRight } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import Button from "../../components/ui/Button.jsx";
@@ -10,8 +11,13 @@ import ConfirmModal from "../../components/ui/ConfirmModal.jsx";
 import HistoryTimeline from "../../components/HistoryTimeline.jsx";
 import { PriorityBadge, StatusBadge } from "../../components/Badges.jsx";
 import { CATEGORIES, STATUSES } from "../../constants.js";
+import SmartAssignModal from "../../components/SmartAssignModal.jsx";
+import PriorityExplainer from "../../components/PriorityExplainer.jsx";
+import MediaGallery from "../../components/MediaGallery.jsx";
+import ComplaintMap from "../../components/ComplaintMap.jsx";
 
 export default function Complaints() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [complaints, setComplaints] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -29,6 +35,7 @@ export default function Complaints() {
   // UI State
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [deleteModalId, setDeleteModalId] = useState(null);
+  const [assignModalComplaint, setAssignModalComplaint] = useState(null);
   
   // Inline edit state
   const [assignDept, setAssignDept] = useState({});
@@ -222,222 +229,108 @@ export default function Complaints() {
                   <td colSpan={7} className="px-4 py-8 text-center text-[var(--text-muted)]">No complaints found.</td>
                 </tr>
               ) : paginatedComplaints.map(c => (
-                <React.Fragment key={c.id}>
-                  <tr 
-                    className={`hover:bg-[var(--surface-hover)] transition-colors cursor-pointer ${expandedRowId === c.id ? 'bg-[var(--surface-hover)]' : ''}`}
-                    onClick={() => setExpandedRowId(expandedRowId === c.id ? null : c.id)}
-                  >
-                    <td className="px-4 py-3"><PriorityBadge priority={c.priority_label || 'Low'} /></td>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                      {c.complaint_id}
-                      {c.is_duplicate && <span className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Dup</span>}
-                    </td>
-                    <td className="px-4 py-3 capitalize">{c.category}</td>
-                    <td className="px-4 py-3">
-                      {c.assigned_to ? (
-                        <span className="bg-[var(--surface-muted)] border border-[var(--border-default)] text-[var(--text-secondary)] px-2.5 py-1 rounded-full text-xs font-medium">
-                          {c.assigned_to}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--brand-danger)] text-xs font-medium bg-red-50 px-2.5 py-1 rounded-full border border-red-200">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{getRelativeTime(c.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                        
-                        {/* Assign Inline Action */}
-                        <div className="relative group">
-                          <button className="p-1.5 rounded text-[var(--text-secondary)] hover:text-[var(--brand-primary)] hover:bg-blue-50 transition-colors" title="Assign">
-                            <UserPlus size={16} />
-                          </button>
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface-card)] border border-[var(--border-default)] rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                            <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
-                              <div className="text-xs font-medium text-[var(--text-muted)] px-2 py-1">Assign to:</div>
-                              <button 
-                                onClick={() => handleAssign(c.id, "")}
-                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-[var(--surface-hover)] rounded"
-                              >
-                                Auto (by category)
-                              </button>
-                              {departments.map(d => (
-                                <button 
-                                  key={d.id}
-                                  onClick={() => handleAssign(c.id, d.name)}
-                                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-[var(--surface-hover)] rounded truncate"
-                                >
-                                  {d.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Delete Action */}
-                        <button 
-                          onClick={() => setDeleteModalId(c)}
-                          className="p-1.5 rounded text-[var(--text-secondary)] hover:text-[var(--brand-danger)] hover:bg-red-50 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-
+                <tr 
+                  key={c.id}
+                  className="hover:bg-[var(--surface-hover)] transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/admin/complaints/${c.id}`)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <PriorityBadge priority={c.priority_label || 'Low'} />
+                      <PriorityExplainer
+                        priorityLabel={c.priority_label || 'Low'}
+                        priorityScore={c.priority_score || 0}
+                        breakdown={c.priority_breakdown}
+                        escalationHistory={c.escalation_history || []}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                    {c.complaint_id}
+                    {c.nyc311_unique_key && (
+                      <span className="bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-zinc-700 text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wide">
+                        NYC 311
+                      </span>
+                    )}
+                    {c.is_duplicate && <span className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Dup</span>}
+                  </td>
+                  <td className="px-4 py-3 capitalize font-medium">{c.category?.replace('_', ' ')}</td>
+                  <td className="px-4 py-3">
+                    {c.assigned_officer_name ? (
+                      <div className="flex flex-col">
+                        <span className="font-medium text-xs text-[var(--text-primary)]">{c.assigned_officer_name}</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">{c.assigned_to}</span>
                       </div>
-                    </td>
-                  </tr>
+                    ) : c.assigned_to ? (
+                      <span className="bg-[var(--surface-muted)] border border-[var(--border-default)] text-[var(--text-secondary)] px-2.5 py-1 rounded-full text-xs font-medium">
+                        {c.assigned_to}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--text-muted)] italic">Unassigned</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{getRelativeTime(c.created_at)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                      
+                      {/* Smart Assign Modal Trigger */}
+                      <button 
+                        onClick={() => setAssignModalComplaint(c)}
+                        className="px-2 py-1 rounded text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition-colors"
+                        title="Smart Assign Recommendation Engine"
+                      >
+                        <Sparkles size={13} className="text-amber-400" />
+                        <span className="hidden sm:inline">Assign</span>
+                      </button>
 
-                  {/* 4. Expandable row detail */}
-                  {expandedRowId === c.id && (
-                    <tr>
-                      <td colSpan={7} className="p-0 border-b border-[var(--border-default)]">
-                        <div className="bg-[var(--surface-hover)] border-t border-[var(--border-default)] p-6 animate-in slide-in-from-top-2 duration-200 shadow-inner">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            
-                            <div className="space-y-6">
-                              <div>
-                                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                                  <MessageSquare size={16} className="text-[var(--text-muted)]" />
-                                  Description
-                                </h4>
-                                <p className="text-sm text-[var(--text-secondary)] bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] whitespace-pre-wrap">
-                                  {c.description}
-                                </p>
-                              </div>
-
-                              <div>
-                                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                                  <MapPin size={16} className="text-[var(--text-muted)]" />
-                                  Location
-                                </h4>
-                                <div className="text-sm text-[var(--text-secondary)] bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] space-y-1">
-                                  <p>{c.address_text || <span className="italic opacity-50">No address provided</span>}</p>
-                                  <p className="text-xs font-mono text-[var(--text-muted)]">
-                                    {c.location?.lat?.toFixed?.(6)}, {c.location?.lng?.toFixed?.(6)}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {c.ai_analysis && (
-                                <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-md p-4 space-y-3">
-                                  <h4 className="text-sm font-semibold text-[var(--brand-primary)] flex items-center gap-2">
-                                    <Sparkles size={16} className="text-[var(--brand-accent)]" />
-                                    AI Analysis
-                                  </h4>
-                                  <div className="text-sm text-[var(--text-secondary)] space-y-1">
-                                    {c.ai_analysis.category && c.ai_analysis.category !== c.category && (
-                                      <p><span className="font-medium text-[var(--text-primary)]">Suggested Category:</span> <span className="capitalize">{c.ai_analysis.category_suggestion || c.ai_analysis.category}</span> <span className="text-xs opacity-70">({Math.round((c.ai_analysis.confidence || 0) * 100)}% confidence)</span></p>
-                                    )}
-                                    <p><span className="font-medium text-[var(--text-primary)]">Urgency:</span> {c.ai_analysis.urgency_level}</p>
-                                    <p className="mt-2 text-xs bg-white dark:bg-black/20 p-2 rounded border border-blue-100/50">{c.ai_analysis.summary || 'No summary available.'}</p>
-                                  </div>
-                                </div>
-                              )}
-
-                              <div className="bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] space-y-4">
-                                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Quick Actions</h4>
-                                <div className="flex flex-wrap gap-4 items-end">
-                                  <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Reassign Department</label>
-                                    <div className="flex gap-2">
-                                      <select 
-                                        className="flex-1 bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm focus:border-[var(--brand-primary)] outline-none"
-                                        value={assignDept[c.id] !== undefined ? assignDept[c.id] : (c.assigned_to || "")}
-                                        onChange={(e) => setAssignDept({...assignDept, [c.id]: e.target.value})}
-                                      >
-                                        <option value="">Auto-assign (by category)</option>
-                                        {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                                      </select>
-                                      <Button 
-                                        variant="outline" size="sm" 
-                                        onClick={() => handleAssign(c.id, assignDept[c.id])} 
-                                        disabled={busy}
-                                      >
-                                        <RefreshCw size={14} /> Assign
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Update Status</label>
-                                    <select
-                                      className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm focus:border-[var(--brand-primary)] outline-none"
-                                      value={updateStatus[c.id] !== undefined ? updateStatus[c.id] : c.status}
-                                      onChange={(e) => {
-                                        setUpdateStatus({...updateStatus, [c.id]: e.target.value});
-                                        handleUpdateStatus(c.id, e.target.value);
-                                      }}
-                                      disabled={busy}
-                                    >
-                                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div>
-                              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                                <ListChecks size={16} className="text-[var(--text-muted)]" />
-                                Timeline History
-                              </h4>
-                              <div className="bg-[var(--surface-card)] p-4 rounded-md border border-[var(--border-default)] max-h-[400px] overflow-y-auto">
-                                <HistoryTimeline history={c.history || []} />
-                              </div>
-
-                              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 mt-6 flex items-center gap-2">
-                                <MessageSquare size={16} className="text-[var(--text-muted)]" />
-                                Comments
-                              </h4>
-                              <div className="bg-[var(--surface-card)] rounded-md border border-[var(--border-default)] flex flex-col">
-                                <div className="max-h-[240px] overflow-y-auto p-4 space-y-3">
-                                  {!c.comments || c.comments.length === 0 ? (
-                                    <div className="text-sm text-[var(--text-muted)] text-center py-4">No comments yet.</div>
-                                  ) : (
-                                    c.comments.map((cm, i) => (
-                                      <div key={i} className="flex flex-col gap-1">
-                                        <div className="flex items-baseline justify-between">
-                                          <span className="text-xs font-semibold text-[var(--text-primary)] capitalize">
-                                            {cm.author_name} <span className="font-normal text-[var(--text-muted)]">({cm.author_role})</span>
-                                          </span>
-                                          <span className="text-[10px] text-[var(--text-muted)]">
-                                            {new Date(cm.created_at).toLocaleDateString()}
-                                          </span>
-                                        </div>
-                                        <div className="text-sm text-[var(--text-secondary)] bg-[var(--surface-muted)] p-2.5 rounded-md border border-[var(--border-default)]">
-                                          {cm.text}
-                                        </div>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-                                <form
-                                  onSubmit={(e) => { e.preventDefault(); handleAddComment(c.id); }}
-                                  className="p-3 border-t border-[var(--border-default)] flex gap-2 bg-[var(--surface-muted)] rounded-b-md"
-                                >
-                                  <input
-                                    type="text"
-                                    value={commentDraft[c.id] || ""}
-                                    onChange={(e) => setCommentDraft({ ...commentDraft, [c.id]: e.target.value })}
-                                    placeholder="Add an admin comment..."
-                                    className="flex-1 rounded-md border border-[var(--border-default)] bg-[var(--surface-card)] px-3 py-1.5 text-sm focus:border-[var(--brand-primary)] focus:outline-none"
-                                  />
-                                  <Button
-                                    type="submit" variant="primary" size="sm"
-                                    isLoading={!!commentBusy[c.id]}
-                                    disabled={!(commentDraft[c.id] || "").trim()}
-                                  >
-                                    <Send size={14} />
-                                  </Button>
-                                </form>
-                              </div>
-                            </div>
-                            
+                      {/* Assign Inline Quick Menu */}
+                      <div className="relative group/menu">
+                        <button className="p-1.5 rounded text-[var(--text-secondary)] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Quick Department Transfer">
+                          <UserPlus size={16} />
+                        </button>
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface-card)] border border-[var(--border-default)] rounded-md shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-20">
+                          <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
+                            <div className="text-xs font-medium text-[var(--text-muted)] px-2 py-1">Department:</div>
+                            <button 
+                              onClick={() => handleAssign(c.id, "")}
+                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-[var(--surface-hover)] rounded"
+                            >
+                              Auto (by category)
+                            </button>
+                            {departments.map(d => (
+                              <button 
+                                key={d.id} 
+                                onClick={() => handleAssign(c.id, d.name)}
+                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-[var(--surface-hover)] rounded truncate"
+                              >
+                                {d.name}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+                      </div>
+
+                      {/* Delete Action */}
+                      <button 
+                        onClick={() => setDeleteModalId(c)}
+                        className="p-1.5 rounded text-[var(--text-secondary)] hover:text-[var(--brand-danger)] hover:bg-red-500/10 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => navigate(`/admin/complaints/${c.id}`)}
+                        className="p-1.5 rounded text-amber-400 hover:bg-amber-400/10 transition-colors ml-1"
+                        title="View Full File"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -461,6 +354,19 @@ export default function Complaints() {
         confirmLabel="Delete"
         variant="danger"
       />
+
+      {/* Smart Assign Modal */}
+      {assignModalComplaint && (
+        <SmartAssignModal
+          complaint={assignModalComplaint}
+          isOpen={!!assignModalComplaint}
+          onClose={() => setAssignModalComplaint(null)}
+          onAssigned={() => {
+            setAssignModalComplaint(null);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -136,9 +136,17 @@ export default function Dashboard() {
       </div>
 
       {/* 4. Trend chart */}
-      <Panel className="p-4">
-        <h2 className="text-sm font-semibold mb-6 text-[var(--text-primary)]">30-Day Complaint Trend</h2>
-        <SimpleLineChart data={trend} />
+      <Panel className="p-5 overflow-hidden">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">30-Day Complaint Velocity & Intake</h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Tracking intake trends versus resolution throughput</p>
+          </div>
+          <span className="text-xs font-mono px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            30 Days Active
+          </span>
+        </div>
+        <SimpleLineChart data={trend} height={200} />
       </Panel>
 
       {/* 5. Bottom row */}
@@ -212,7 +220,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-[var(--border-default)] pt-8 mt-8">
         <Link to="/admin/complaints" className="block group">
           <Panel className="p-5 flex items-center gap-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-md border-l-4 border-l-[var(--brand-primary)]">
-            <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-[var(--brand-primary)] group-hover:bg-[var(--brand-primary)] group-hover:text-white transition-colors">
+            <div className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors">
               <ListChecks size={24} />
             </div>
             <div>

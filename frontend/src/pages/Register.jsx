@@ -74,7 +74,7 @@ export default function Register() {
     <AuthLayout>
       <div className="w-full">
         <div className="mb-6">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Create an account</h1>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">Create an account</h1>
           <p className="mt-2 text-ink-secondary">Join the civic platform to report or resolve issues.</p>
         </div>
         
@@ -86,13 +86,13 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: "citizen" })}
-                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all ${
+                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all cursor-pointer ${
                   form.role === "citizen" 
                     ? "border-brand bg-brand/5 ring-1 ring-brand" 
                     : "border-border bg-card hover:border-border-strong hover:bg-hover"
                 }`}
               >
-                <div className={`rounded-full p-2 ${form.role === "citizen" ? "bg-brand text-white" : "bg-hover text-ink-secondary"}`}>
+                <div className={`rounded-full p-2 ${form.role === "citizen" ? "bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 font-bold" : "bg-hover text-ink-secondary"}`}>
                   <User size={18} />
                 </div>
                 <div>
@@ -104,13 +104,13 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setForm({ ...form, role: "officer" })}
-                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all ${
+                className={`flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all cursor-pointer ${
                   form.role === "officer" 
                     ? "border-brand bg-brand/5 ring-1 ring-brand" 
                     : "border-border bg-card hover:border-border-strong hover:bg-hover"
                 }`}
               >
-                <div className={`rounded-full p-2 ${form.role === "officer" ? "bg-brand text-white" : "bg-hover text-ink-secondary"}`}>
+                <div className={`rounded-full p-2 ${form.role === "officer" ? "bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 font-bold" : "bg-hover text-ink-secondary"}`}>
                   <Shield size={18} />
                 </div>
                 <div>

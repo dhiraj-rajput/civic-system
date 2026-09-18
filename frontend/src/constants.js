@@ -7,4 +7,4 @@ export const CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
-export const STATUSES = ["New", "Assigned", "In Progress", "Resolved"];
+export const STATUSES = ["New", "Assigned", "In Progress", "Resolved", "Closed", "Reopened"];

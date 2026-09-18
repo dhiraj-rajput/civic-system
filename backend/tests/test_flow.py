@@ -24,10 +24,10 @@ async def client():
     database_module.db = mock_db
     database_module.get_db = lambda: mock_db
 
-    async def fake_score(db, doc):
-        return 42.0, "Medium"
+    async def fake_score(db, doc, *args, **kwargs):
+        return 42.0, "Medium", None
 
-    async def fake_duplicate(db, doc):
+    async def fake_duplicate(db, doc, *args, **kwargs):
         return False, None
 
     # complaints.py did `from app.services.priority import ...`, so the name

@@ -2,29 +2,33 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   AlertTriangle, Trash2, Lightbulb, Droplets, MapPin, 
-  Map, MoreHorizontal, Check, RefreshCw
+  Map, MoreHorizontal, Check, RefreshCw, Upload
 } from 'lucide-react';
-import { api } from '../../api/client.js';
-import Button from '../../components/ui/Button.jsx';
-import AISuggestion from '../../components/ai/AISuggestion.jsx';
-import { useToast } from '../../components/ui/Toast.jsx';
-import { PriorityBadge } from '../../components/Badges.jsx';
+import { api } from '@/api/client';
+import Button from '@/components/ui/Button';
+import AISuggestion from '@/components/ai/AISuggestion';
+import { useToast } from '@/components/ui/Toast';
+import { PriorityBadge } from '@/components/Badges';
+import ComplaintMap from '@/components/ComplaintMap';
+import MediaUpload from '@/components/MediaUpload';
+import MediaGallery from '@/components/MediaGallery';
 
 const CATEGORIES = [
-  { id: 'pothole', icon: AlertTriangle, label: 'Pothole', desc: 'Road damage or deep holes' },
-  { id: 'garbage', icon: Trash2, label: 'Garbage', desc: 'Uncollected waste or dumping' },
-  { id: 'streetlight', icon: Lightbulb, label: 'Streetlight', desc: 'Broken or flickering lights' },
-  { id: 'water_supply', icon: Droplets, label: 'Water Supply', desc: 'Leaks or pressure issues' },
-  { id: 'other', icon: MoreHorizontal, label: 'Other', desc: 'Any other civic issue' },
+  { id: 'pothole', icon: AlertTriangle, label: 'Pothole', desc: 'Road damage, deep holes or asphalt trenches' },
+  { id: 'garbage', icon: Trash2, label: 'Garbage', desc: 'Uncollected waste, overflowing bins or dumping' },
+  { id: 'streetlight', icon: Lightbulb, label: 'Streetlight', desc: 'Dark streets, broken poles or flickering lamps' },
+  { id: 'water_supply', icon: Droplets, label: 'Water Supply', desc: 'Pipe leaks, low pressure or dirty tap water' },
+  { id: 'other', icon: MoreHorizontal, label: 'Other', desc: 'Any other civic or infrastructure issue' },
 ];
 
 export default function SubmitComplaint() {
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
+  const [lat, setLat] = useState('40.7128');
+  const [lng, setLng] = useState('-74.0060');
   const [address, setAddress] = useState('');
+  const [mediaUrls, setMediaUrls] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
   
@@ -74,15 +78,15 @@ export default function SubmitComplaint() {
       return;
     }
     
-    toast.info('Getting your location...');
+    toast.info('Detecting current coordinates...');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLat(position.coords.latitude.toFixed(6));
         setLng(position.coords.longitude.toFixed(6));
-        toast.success('Location updated');
+        toast.success('Location updated from device GPS');
       },
       (error) => {
-        toast.error('Unable to retrieve your location');
+        toast.error('Unable to retrieve device location');
       }
     );
   };
@@ -90,7 +94,7 @@ export default function SubmitComplaint() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCategory || !description || !address) {
-      toast.error('Please fill in all required fields');
+      toast.error('Please fill in all required fields (category, description, address)');
       return;
     }
 
@@ -100,6 +104,7 @@ export default function SubmitComplaint() {
         category: selectedCategory,
         description,
         address_text: address,
+        media_urls: mediaUrls,
         location: {
           lat: lat ? parseFloat(lat) : 40.7128,
           lng: lng ? parseFloat(lng) : -74.0060,
@@ -120,50 +125,56 @@ export default function SubmitComplaint() {
     setSubmittedData(null);
     setSelectedCategory('');
     setDescription('');
-    setLat('');
-    setLng('');
+    setLat('40.7128');
+    setLng('-74.0060');
     setAddress('');
+    setMediaUrls([]);
     setAiResult(null);
   };
 
   if (submittedData) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
-        <div className="w-24 h-24 rounded-full bg-success/20 flex items-center justify-center mb-6">
-          <Check size={48} className="text-success animate-[bounce_1s_ease-in-out]" />
+        <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6">
+          <Check size={40} className="text-success animate-[bounce_1s_ease-in-out]" />
         </div>
         
-        <h1 className="text-3xl font-bold text-ink mb-2">Complaint Submitted</h1>
-        <p className="text-ink-secondary mb-8 text-center max-w-md">
-          Your issue has been successfully reported to the authorities.
+        <h1 className="font-serif text-3xl font-bold text-ink mb-2">Complaint Submitted</h1>
+        <p className="text-ink-secondary mb-8 text-center max-w-md text-sm">
+          Your issue has been successfully routed to the municipal management pipeline.
         </p>
 
-        <div className="bg-card border border-border rounded-xl shadow-sm w-full p-6 mb-8">
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm mb-6">
+        <div className="bg-card border border-border rounded-xl shadow-sm w-full p-6 mb-8 space-y-6">
+          <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
             <div className="text-ink-secondary">Complaint ID</div>
-            <div className="font-mono font-medium text-ink text-right">#{submittedData.id}</div>
+            <div className="font-mono font-medium text-ink text-right">#{submittedData.complaint_id || submittedData.id}</div>
             
             <div className="text-ink-secondary">Category</div>
-            <div className="font-medium text-ink text-right">{submittedData.category}</div>
+            <div className="font-medium text-ink text-right capitalize">{submittedData.category}</div>
             
-            <div className="text-ink-secondary">Priority</div>
-            <div className="text-right">
+            <div className="text-ink-secondary">Priority Score</div>
+            <div className="text-right flex items-center justify-end gap-2">
+              <span className="font-mono font-bold text-ink">{submittedData.priority_score} pts</span>
               <PriorityBadge priority={submittedData.priority_label} />
             </div>
           </div>
           
+          {submittedData.media_urls && submittedData.media_urls.length > 0 && (
+            <MediaGallery mediaUrls={submittedData.media_urls} title="Attached Evidence" />
+          )}
+
           {submittedData.ai_analysis?.summary && (
             <div className="bg-brand/5 border border-brand/20 p-4 rounded-lg">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-brand mb-1">AI Summary</h3>
-              <p className="text-sm text-ink-secondary">{submittedData.ai_analysis.summary}</p>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-brand mb-1">AI Extracted Summary</h3>
+              <p className="text-xs text-ink-secondary leading-relaxed">{submittedData.ai_analysis.summary}</p>
             </div>
           )}
           
           {submittedData.is_duplicate && (
-            <div className="mt-4 bg-warning/10 border border-warning/30 p-4 rounded-lg flex gap-3 text-warning-dark text-sm">
+            <div className="bg-warning/10 border border-warning/30 p-4 rounded-lg flex gap-3 text-warning-dark text-xs">
               <AlertTriangle size={18} className="shrink-0 text-warning" />
               <div>
-                <strong>Potential Duplicate:</strong> A similar issue has already been reported in this area. It has been linked.
+                <strong>Duplicate Cluster Match:</strong> This complaint shares keywords and location with an existing issue and has been linked to master case <code>{submittedData.duplicate_group_id}</code>.
               </div>
             </div>
           )}
@@ -183,7 +194,10 @@ export default function SubmitComplaint() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 animate-in fade-in duration-500">
-      <h1 className="text-2xl font-bold text-ink mb-6">Report a Civic Issue</h1>
+      <div className="mb-6">
+        <h1 className="font-serif text-2xl font-bold text-ink">Report a Civic Issue</h1>
+        <p className="text-xs text-ink-muted mt-1">Submit reports with GPS pins, photo/video evidence, and smart priority assignment.</p>
+      </div>
       
       <form onSubmit={handleSubmit} className="space-y-8 bg-card border border-border p-6 sm:p-8 rounded-xl shadow-sm">
         
@@ -240,7 +254,7 @@ export default function SubmitComplaint() {
               onChange={handleDescriptionChange}
               rows={4}
               maxLength={1000}
-              placeholder="Please provide details about the issue..."
+              placeholder="Describe the issue in detail (e.g. Deep crater pothole outside metro exit damaging car wheels)..."
               className="w-full rounded-md border border-border bg-surface-input px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand resize-y min-h-[100px]"
             />
           </div>
@@ -256,16 +270,42 @@ export default function SubmitComplaint() {
           />
         </div>
 
-        {/* Location Section */}
+        {/* Media Upload (Images & Videos) */}
+        <div className="pt-4 border-t border-border">
+          <MediaUpload
+            mediaUrls={mediaUrls}
+            onChange={setMediaUrls}
+            maxFiles={4}
+            label="Attach Media Evidence"
+            helperText="Upload photos or videos of the problem (JPEG, PNG, WebP, MP4, WebM)"
+          />
+        </div>
+
+        {/* Location & Map Section */}
         <div className="space-y-4 pt-4 border-t border-border">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-ink">
-              Location details <span className="text-danger">*</span>
-            </label>
+            <div>
+              <label className="block text-sm font-medium text-ink">
+                Location Details & Interactive Pin <span className="text-danger">*</span>
+              </label>
+              <p className="text-xs text-ink-muted">Drag or click on the map to place the incident pin.</p>
+            </div>
             <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
-              <MapPin size={14} /> Use my location
+              <MapPin size={14} /> My GPS
             </Button>
           </div>
+
+          {/* Interactive Map Picker */}
+          <ComplaintMap
+            mode="picker"
+            lat={parseFloat(lat) || 40.7128}
+            lng={parseFloat(lng) || -74.0060}
+            onLocationChange={({ lat: newLat, lng: newLng }) => {
+              setLat(newLat.toString());
+              setLng(newLng.toString());
+            }}
+            style={{ height: "300px", width: "100%" }}
+          />
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -274,8 +314,8 @@ export default function SubmitComplaint() {
                 type="text"
                 value={lat}
                 onChange={(e) => setLat(e.target.value)}
-                placeholder="e.g. 19.0760"
-                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                placeholder="e.g. 40.7128"
+                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-xs text-ink font-mono focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -284,14 +324,14 @@ export default function SubmitComplaint() {
                 type="text"
                 value={lng}
                 onChange={(e) => setLng(e.target.value)}
-                placeholder="e.g. 72.8777"
-                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                placeholder="e.g. -74.0060"
+                className="w-full rounded-md border border-border bg-surface-input px-3 py-2 text-xs text-ink font-mono focus:border-brand focus:outline-none"
               />
             </div>
           </div>
           
           <div>
-            <label className="block text-xs font-medium text-ink-secondary mb-1">Street Address <span className="text-danger">*</span></label>
+            <label className="block text-xs font-medium text-ink-secondary mb-1">Street Address or Landmark <span className="text-danger">*</span></label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-muted">
                 <Map size={16} />
@@ -300,8 +340,8 @@ export default function SubmitComplaint() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter exact address or landmark"
-                className="w-full rounded-md border border-border bg-surface-input pl-10 pr-4 py-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                placeholder="e.g. 85 Broad Street, Financial District, Manhattan"
+                className="w-full rounded-md border border-border bg-surface-input pl-10 pr-4 py-2.5 text-sm text-ink focus:border-brand focus:outline-none"
               />
             </div>
           </div>

@@ -1,12 +1,22 @@
-"""Rule-based prioritization: age + category severity + nearby-similar-complaint count,
-plus rule-based duplicate detection (ported from ResolveAI's `ml_output.is_duplicate` /
-`duplicate_group_id` shape, implemented here without ML -- same nearby-cluster query the
-priority score already uses).
+"""Priority Engine and Duplicate Clustering.
 
-Owner: priority-engine track (see TASKS.md). Depends on the `complaints` collection
-existing with a 2dsphere index on `location` (created at startup in app/main.py).
+Features:
+1. 4-Step Duplicate Clustering Pipeline:
+   - Step 1: Same category
+   - Step 2: GPS distance <= 200m
+   - Step 3: Filed within 14 days
+   - Step 4: Issue-keyword overlap >= 2 after canonical synonym mapping
+2. Explainable Priority Breakdown:
+   - Returns score, label, and detailed priority_breakdown dict
+3. Dynamic Priority Escalation (Batch 2):
+   - Escalates priority as time passes, approaching/breaching SLA, or cluster growth
+   - Progression: Low -> Medium -> High -> Critical (Monotonic: never decreases)
+   - Tracks escalation history with timestamps and reasons
 """
+import math
+import re
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set, Tuple
 
 CATEGORY_WEIGHT = {
     "water_supply": 1.0,
@@ -16,128 +26,372 @@ CATEGORY_WEIGHT = {
     "other": 0.3,
 }
 
+PRIORITY_TIERS = ["Low", "Medium", "High", "Critical"]
+
 W_AGE = 0.3
 W_CATEGORY = 0.3
 W_CLUSTER = 0.4
 CLUSTER_RADIUS_METERS = 200
 DUPLICATE_WINDOW_DAYS = 14
 
+# Canonical Synonym Map for Step 4 of Duplicate Clustering
+SYNONYM_MAP = {
+    # Pothole synonyms
+    "trench": "pothole",
+    "crater": "pothole",
+    "ditch": "pothole",
+    "bump": "pothole",
+    "crack": "pothole",
+    "cracks": "pothole",
+    "hole": "pothole",
+    "holes": "pothole",
+    "asphalt": "pothole",
+    "pavement": "pothole",
+    "roadway": "pothole",
+    "road": "pothole",
+    
+    # Garbage synonyms
+    "trash": "garbage",
+    "waste": "garbage",
+    "rubbish": "garbage",
+    "debris": "garbage",
+    "litter": "garbage",
+    "dirt": "garbage",
+    "filth": "garbage",
+    "dumping": "dump",
+    "dump": "dump",
+    "bin": "dustbin",
+    "bins": "dustbin",
+    "dustbin": "dustbin",
+    
+    # Overflow synonyms
+    "overflowing": "overflow",
+    "overflowed": "overflow",
+    "overflow": "overflow",
+    "spill": "overflow",
+    "spilling": "overflow",
+    "heaping": "overflow",
+    "pile": "overflow",
+    
+    # Streetlight synonyms
+    "dark": "unlit",
+    "darkness": "unlit",
+    "blackout": "unlit",
+    "lamp": "streetlight",
+    "streetlamp": "streetlight",
+    "bulb": "streetlight",
+    "pole": "streetlight",
+    "flickering": "blinking",
+    "blinking": "blinking",
+    "out": "unlit",
+    
+    # Water supply synonyms
+    "burst": "pipe_leak",
+    "bursting": "pipe_leak",
+    "leaking": "pipe_leak",
+    "leak": "pipe_leak",
+    "gushing": "pipe_leak",
+    "muddy": "dirty_water",
+    "brown": "dirty_water",
+    "contaminated": "dirty_water",
+    "pressure": "water_pressure",
+    "dry": "no_water",
+}
 
-import difflib
-import math
+STOP_WORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for",
+    "of", "and", "near", "has", "have", "had", "been", "there", "it", "its",
+    "my", "our", "we", "they", "this", "that", "with", "from", "by", "as",
+    "please", "help", "very", "due", "outside", "corner", "street", "avenue", "rd", "st"
+}
 
-async def score_complaint(db, doc: dict, urgency_level: str = "LOW", duration_days: int = 0) -> tuple[float, str]:
-    age_hours = (datetime.utcnow() - doc["created_at"]).total_seconds() / 3600
-    if duration_days > 7:
-        age_hours += (duration_days - 7) * 24
-        
-    age_score = min(age_hours / (24 * 7), 1.0)
 
-    category_score = CATEGORY_WEIGHT.get(doc["category"], 0.3)
+def extract_normalized_keywords(text: str) -> Set[str]:
+    """Tokenizes text, strips punctuation, and maps synonyms to canonical terms."""
+    if not text:
+        return set()
+    words = re.findall(r'[a-zA-Z0-9_]+', text.lower())
+    keywords = set()
+    for w in words:
+        if len(w) < 3 or w in STOP_WORDS:
+            continue
+        canonical = SYNONYM_MAP.get(w, w)
+        keywords.add(canonical)
+    return keywords
 
-    # Use $geoWithin with $centerSphere for MongoDB 8 compatibility (avoids $near sort error in count_documents)
-    # Earth radius in meters is approx 6,378,100
-    radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
-    coords = doc["location"]["coordinates"]
-    cluster_count = await db.complaints.count_documents(
-        {
-            "category": doc["category"],
-            "location": {
-                "$geoWithin": {
-                    "$centerSphere": [coords, radius_radians]
-                }
-            },
-        }
+
+def _haversine_distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6378100.0  # Earth radius in meters
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2.0) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2.0) ** 2
     )
-    cluster_score = min(cluster_count / 10, 1.0)
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return R * c
+
+
+async def score_complaint(
+    db,
+    doc: dict,
+    urgency_level: Optional[str] = None,
+    duration_days: Optional[int] = None,
+) -> Tuple[float, str, dict]:
+    """Calculate an explainable priority score and detailed breakdown for a complaint.
+
+    Returns:
+        (score: float, label: str, breakdown: dict)
+    """
+    created = doc.get("created_at") or datetime.utcnow()
+    now = datetime.utcnow()
+    age_hours = max((now - created).total_seconds() / 3600.0, 0.0)
+
+    # 1. Age Factor (scaled 0-1)
+    age_score = min(age_hours / (24 * 7), 1.0)
+    category_score = CATEGORY_WEIGHT.get(doc.get("category", "other"), 0.3)
+
+    radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
+    coords = doc.get("location", {}).get("coordinates", [0.0, 0.0])
+    
+    cluster_count = 1
+    if db is not None:
+        try:
+            cluster_count = await db.complaints.count_documents(
+                {
+                    "category": doc["category"],
+                    "location": {
+                        "$geoWithin": {
+                            "$centerSphere": [coords, radius_radians]
+                        }
+                    },
+                }
+            )
+        except Exception:
+            try:
+                raw_cands = await db.complaints.find({"category": doc.get("category", "")}).to_list(100)
+                cluster_count = max(1, sum(
+                    1 for c in raw_cands
+                    if _haversine_distance_m(
+                        coords[1], coords[0],
+                        c.get("location", {}).get("coordinates", [0, 0])[1],
+                        c.get("location", {}).get("coordinates", [0, 0])[0]
+                    ) <= CLUSTER_RADIUS_METERS
+                ))
+            except Exception:
+                cluster_count = 1
+    cluster_score = min(cluster_count / 10.0, 1.0)
 
     raw = W_AGE * age_score + W_CATEGORY * category_score + W_CLUSTER * cluster_score
-    score = raw * 100
+    score = raw * 100.0
     
+    safety_boost = 1.0
     if urgency_level == "CRITICAL":
-        score *= 1.5
+        safety_boost = 1.5
+        score *= safety_boost
     elif urgency_level == "HIGH":
-        score *= 1.2
-        
-    score = min(round(score, 1), 100.0)
+        safety_boost = 1.2
+        score *= safety_boost
 
-    if score >= 85:
+    sla_boost = 1.0
+    sla_urgency_pts = 0.0
+    if age_hours > 72:
+        sla_boost = 1.4
+        sla_urgency_pts = 20.0
+        score += sla_urgency_pts
+    elif age_hours > 48:
+        sla_boost = 1.2
+        sla_urgency_pts = 10.0
+        score += sla_urgency_pts
+
+    score = round(min(score, 100.0), 1)
+
+    if score >= 80:
         label = "Critical"
-    elif score >= 65:
+    elif score >= 50:
         label = "High"
-    elif score >= 40:
+    elif score >= 25:
         label = "Medium"
     else:
         label = "Low"
-    return score, label
 
-def score_batch(complaints: list[dict]) -> list[tuple[float, str]]:
-    results = []
-    now = datetime.utcnow()
-    for doc in complaints:
-        age_hours = (now - doc["created_at"]).total_seconds() / 3600
-        age_score = min(age_hours / (24 * 7), 1.0)
-        category_score = CATEGORY_WEIGHT.get(doc["category"], 0.3)
-        # Without DB, we assume cluster_score is 0 or pre-calculated
-        cluster_score = doc.get("cluster_score", 0.0)
-        raw = W_AGE * age_score + W_CATEGORY * category_score + W_CLUSTER * cluster_score
-        score = raw * 100
-        score = min(round(score, 1), 100.0)
-        if score >= 85: label = "Critical"
-        elif score >= 65: label = "High"
-        elif score >= 40: label = "Medium"
-        else: label = "Low"
-        results.append((score, label))
-    return results
+    breakdown = {
+        "age_hours": round(age_hours, 1),
+        "age_factor": round(age_score * W_AGE * 100, 1),
+        "category_severity": round(category_score * W_CATEGORY * 100, 1),
+        "similar_complaints": cluster_count,
+        "cluster_factor": round(cluster_score * W_CLUSTER * 100, 1),
+        "safety_factor": round((safety_boost - 1.0) * 100, 1),
+        "sla_urgency": round(sla_urgency_pts, 1),
+        "summary": f"Calculated based on {cluster_count} similar complaints nearby, category severity ({doc.get('category')}), and age of {round(age_hours, 1)}h."
+    }
+
+    return score, label, breakdown
+
 
 def get_duplicate_score(new_doc: dict, candidate_doc: dict) -> float:
+    """Computes similarity score between 0.0 and 1.0 using the 4-step pipeline criteria."""
+    if new_doc.get("category") != candidate_doc.get("category"):
+        return 0.0
+    
     time_diff = abs((new_doc["created_at"] - candidate_doc["created_at"]).total_seconds())
     if time_diff > DUPLICATE_WINDOW_DAYS * 86400:
         return 0.0
-        
-    score = 0.0
-    if new_doc["category"] == candidate_doc["category"]:
-        score += 0.4
-        
-    # Assuming the candidate is already retrieved via the $near geo-query, meaning it's within 200m
-    score += 0.4 
-    
-    desc1 = new_doc.get("description", "")
-    desc2 = candidate_doc.get("description", "")
-    text_sim = difflib.SequenceMatcher(None, desc1, desc2).ratio()
-    score += text_sim * 0.2
-    
-    return score
+
+    k1 = extract_normalized_keywords(new_doc.get("description", ""))
+    k2 = extract_normalized_keywords(candidate_doc.get("description", ""))
+    shared = k1.intersection(k2)
+
+    if len(shared) >= 2:
+        return 0.8 + min(len(shared) * 0.05, 0.2)
+    return 0.3
 
 
-async def detect_duplicate(db, doc: dict) -> tuple[bool, str | None]:
-    """Flag a newly-submitted complaint as a likely duplicate of an existing one.
+async def detect_duplicate(db, doc: dict) -> Tuple[bool, Optional[str]]:
+    """4-Step Duplicate Clustering Pipeline:
+    Step 1: Same category
+    Step 2: GPS distance <= 200m ($centerSphere)
+    Step 3: Filed within 14 days
+    Step 4: >= 2 shared keywords after canonical synonym mapping
 
-    Rule: same category, within CLUSTER_RADIUS_METERS, submitted in the last
-    DUPLICATE_WINDOW_DAYS. If a match exists, group this complaint under the
-    earliest match's own duplicate_group_id (or its id, if it's the group root).
-    Returns (is_duplicate, duplicate_group_id). A non-duplicate is the root of
-    its own (implicit) group: duplicate_group_id is None and callers should
-    treat the complaint's own id as the group id in that case.
+    Yes -> duplicate / link to master issue (returns True, master_group_id)
+    No -> separate issue (returns False, None)
     """
     cutoff = datetime.utcnow() - timedelta(days=DUPLICATE_WINDOW_DAYS)
     radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
     coords = doc["location"]["coordinates"]
-    earliest_match = await db.complaints.find_one(
-        {
-            "_id": {"$ne": doc.get("_id")},
-            "category": doc["category"],
-            "created_at": {"$gte": cutoff},
-            "location": {
-                "$geoWithin": {
-                    "$centerSphere": [coords, radius_radians]
-                }
-            },
-        },
-        sort=[("created_at", 1)],
-    )
-    if not earliest_match:
-        return False, None
 
-    group_id = str(earliest_match.get("duplicate_group_id") or earliest_match["_id"])
-    return True, group_id
+    new_keywords = extract_normalized_keywords(doc.get("description", ""))
+
+    # Find candidates meeting steps 1, 2, and 3
+    candidates = []
+    try:
+        cursor = db.complaints.find(
+            {
+                "_id": {"$ne": doc.get("_id")},
+                "category": doc["category"],
+                "created_at": {"$gte": cutoff},
+                "location": {
+                    "$geoWithin": {
+                        "$centerSphere": [coords, radius_radians]
+                    }
+                },
+            }
+        ).sort("created_at", 1)
+        candidates = await cursor.to_list(20)
+    except Exception:
+        candidates = []
+
+    if not candidates:
+        try:
+            fallback_cursor = db.complaints.find(
+                {
+                    "_id": {"$ne": doc.get("_id")},
+                    "category": doc["category"],
+                    "created_at": {"$gte": cutoff},
+                }
+            ).sort("created_at", 1)
+            raw_cands = await fallback_cursor.to_list(50)
+            candidates = [
+                c for c in raw_cands
+                if _haversine_distance_m(
+                    coords[1], coords[0],
+                    c.get("location", {}).get("coordinates", [0, 0])[1],
+                    c.get("location", {}).get("coordinates", [0, 0])[0]
+                ) <= CLUSTER_RADIUS_METERS
+            ]
+        except Exception:
+            candidates = []
+
+    # Step 4: Check keyword overlap with synonym mapping
+    for cand in candidates:
+        cand_keywords = extract_normalized_keywords(cand.get("description", ""))
+        shared = new_keywords.intersection(cand_keywords)
+        if len(shared) >= 2:
+            master_id = str(cand.get("duplicate_group_id") or cand.get("complaint_id") or cand["_id"])
+            return True, master_id
+
+    return False, None
+
+
+def is_priority_higher(new_label: str, old_label: str) -> bool:
+    """Returns True if new_label is strictly higher tier than old_label."""
+    try:
+        new_idx = PRIORITY_TIERS.index(new_label)
+        old_idx = PRIORITY_TIERS.index(old_label)
+        return new_idx > old_idx
+    except ValueError:
+        return False
+
+
+async def check_and_escalate_complaint(db, doc: dict) -> Optional[dict]:
+    """Evaluates whether an active complaint should be dynamically escalated.
+    Monotonic: Priority is never decreased.
+    Returns escalation update dict if escalated, else None.
+    """
+    if doc.get("status") in ("Resolved", "Closed"):
+        return None
+
+    now = datetime.utcnow()
+    created_at = doc.get("created_at", now)
+    age_hours = (now - created_at).total_seconds() / 3600
+
+    current_label = doc.get("priority_label", "Low")
+    current_score = doc.get("priority_score", 0.0)
+
+    # Recompute priority with latest age & cluster count
+    ai_urgency = doc.get("ai_analysis", {}).get("urgency_level", "LOW")
+    new_score, new_label, breakdown = await score_complaint(db, doc, urgency_level=ai_urgency)
+
+    reason = None
+    # SLA breaches force escalation
+    if age_hours >= 96 and is_priority_higher("Critical", current_label):
+        new_label = "Critical"
+        new_score = max(new_score, 88.0)
+        reason = f"SLA severely breached ({int(age_hours)}h elapsed > 96h limit)"
+    elif age_hours >= 72 and is_priority_higher("High", current_label):
+        new_label = "High"
+        new_score = max(new_score, 70.0)
+        reason = f"SLA breached ({int(age_hours)}h elapsed > 72h limit)"
+    elif age_hours >= 48 and current_label == "Low":
+        new_label = "Medium"
+        new_score = max(new_score, 45.0)
+        reason = f"SLA deadline approaching ({int(age_hours)}h elapsed)"
+    elif is_priority_higher(new_label, current_label):
+        reason = f"Cluster density increased or conditions aggravated (score {current_score} -> {new_score})"
+
+    if reason and (is_priority_higher(new_label, current_label) or new_score > current_score):
+        escalation_entry = {
+            "at": now,
+            "old_priority": current_label,
+            "new_priority": new_label,
+            "old_score": current_score,
+            "new_score": new_score,
+            "reason": reason,
+        }
+        history_entry = {
+            "event": "escalated",
+            "detail": f"Priority escalated: {current_label} -> {new_label} ({reason})",
+            "at": now,
+        }
+        update = {
+            "priority_score": new_score,
+            "priority_label": new_label,
+            "priority_breakdown": breakdown,
+            "updated_at": now,
+        }
+        await db.complaints.update_one(
+            {"_id": doc["_id"]},
+            {
+                "$set": update,
+                "$push": {
+                    "escalation_history": escalation_entry,
+                    "history": history_entry,
+                },
+            },
+        )
+        return {**update, "escalation_entry": escalation_entry}
+
+    return None

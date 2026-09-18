@@ -8,8 +8,8 @@
 ═══════════════════════════════════════════ */
 :root {
   /* Brand palette */
-  --brand-primary: #1e3a5f;      /* Deep navy */
-  --brand-primary-light: #2563eb; /* Bright blue */
+  --brand-primary: #0f172a;      /* Slate 900 (clean graphite) */
+  --brand-primary-light: #1e293b; /* Slate 800 */
   --brand-accent: #f59e0b;       /* Amber */
   --brand-accent-dark: #d97706;  /* Dark amber */
   --brand-danger: #dc2626;       /* Red */
@@ -36,7 +36,7 @@
   /* Borders */
   --border-default: #e2e8f0;
   --border-strong: #cbd5e1;
-  --border-focus: #2563eb;
+  --border-focus: #0f172a;
   
   /* Status colors */
   --status-new: #3b82f6;         /* Blue */
@@ -77,42 +77,42 @@
    DESIGN TOKENS — DARK MODE (CHARCOAL BLACK)
 ═══════════════════════════════════════════ */
 .dark {
-  --brand-primary: #3b82f6;      /* Bright blue accent */
-  --brand-primary-light: #60a5fa;
-  --brand-accent: #f59e0b;
-  --brand-accent-dark: #fbbf24;
+  --brand-primary: #f59e0b;      /* Golden yellow */
+  --brand-primary-light: #fbbf24; /* Soft golden yellow */
+  --brand-accent: #f59e0b;       /* Golden yellow accent */
+  --brand-accent-dark: #d97706;
   --brand-danger: #f87171;
   --brand-success: #4ade80;
-  --brand-warning: #fb923c;
+  --brand-warning: #f59e0b;      /* Golden yellow */
   
-  --surface-bg: #121212;         /* True charcoal black page background */
+  --surface-bg: #0f0f12;         /* Deep black charcoal background */
   --surface-card: #18181b;       /* Elevated charcoal card */
-  --surface-sidebar: #121212;    /* Seamless charcoal sidebar */
-  --surface-sidebar-hover: #222225;
-  --surface-input: #1e1e22;      /* Input background */
-  --surface-hover: #26262a;      /* Hover state */
-  --surface-muted: #1c1c1f;      /* Muted sections */
+  --surface-sidebar: #121214;    /* Seamless charcoal sidebar */
+  --surface-sidebar-hover: #1f1f23;
+  --surface-input: #1b1b1f;      /* Input background */
+  --surface-hover: #222226;      /* Hover state */
+  --surface-muted: #141417;      /* Muted charcoal section */
   
   --text-primary: #f4f4f5;       /* Neutral light text */
   --text-secondary: #a1a1aa;     /* Neutral secondary text */
   --text-muted: #71717a;         /* Neutral muted text */
   --text-on-dark: #f4f4f5;       /* Text on dark bg */
   --text-sidebar: #a1a1aa;       /* Neutral sidebar text */
-  --text-sidebar-active: #ffffff;
+  --text-sidebar-active: #f59e0b;/* Golden yellow active */
   
   --border-default: #27272a;     /* Charcoal border */
   --border-strong: #3f3f46;      /* Stronger border */
-  --border-focus: #3b82f6;
+  --border-focus: #f59e0b;       /* Golden yellow focus */
   
-  --status-new: #60a5fa;
-  --status-assigned: #fbbf24;
-  --status-inprogress: #a78bfa;
+  --status-new: #94a3b8;
+  --status-assigned: #fbbf24;    /* Golden yellow */
+  --status-inprogress: #f59e0b;  /* Golden yellow */
   --status-resolved: #4ade80;
   
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.6);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.7);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.6);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.7);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.8);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.6);
 }
 
 /* ═══════════════════════════════════════════
@@ -155,7 +155,9 @@
   --color-priority-medium: var(--priority-medium);
   --color-priority-low: var(--priority-low);
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Montserrat', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
@@ -173,10 +175,10 @@ html {
 body {
   background-color: var(--surface-bg);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Montserrat', sans-serif;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 /* Scrollbar */
@@ -193,16 +195,22 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(37, 99, 235, 0.2);
+  background: rgba(245, 158, 11, 0.3);
   color: var(--text-primary);
 }
 
-/* Smooth transitions for theme switch */
-*, *::before, *::after {
-  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-fast);
+/* Ultra-smooth transitions for theme switch (targeted surfaces to prevent frame-drops) */
+body, header, nav, aside, main, section, footer,
+.bg-card, .bg-bg, .bg-sidebar, [class*="bg-surface-"],
+[class*="border-"], table, tr, th, td,
+button, input, select, textarea {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 250ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 /* Reset transition for elements that shouldn't animate */
-svg, img, canvas {
+svg, img, canvas, .no-transition {
   transition: none !important;
 }
 
@@ -249,4 +257,18 @@ svg, img, canvas {
 .fade-in { animation-name: fadeIn; }
 .duration-300 { animation-duration: 0.3s; }
 .duration-200 { animation-duration: 0.2s; }
+
+/* Infinite Marquee Animation (Right to Left) */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
 

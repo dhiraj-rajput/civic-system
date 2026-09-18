@@ -179,18 +179,18 @@ def classify_complaint(description: str) -> dict:
     if not description or len(description.strip()) < 5:
         return {"category": "other", "confidence": 1.0, "matched_keywords": [], "method": "fallback"}
     
-    desc_lower = description.lower()
+    desc_clean = " ".join(description.lower().split())
     scores = defaultdict(float)
     matched = defaultdict(list)
     
     for cat, rules in CATEGORY_RULES.items():
         for kw, weight in rules["keywords"]:
-            if kw in desc_lower:
+            if kw in desc_clean:
                 scores[cat] += weight
                 matched[cat].append(kw)
                 
         for pat in rules["patterns"]:
-            if re.search(pat, desc_lower):
+            if re.search(pat, desc_clean):
                 scores[cat] += 15
                 matched[cat].append(f"pattern_match: {pat}")
                 
@@ -292,15 +292,15 @@ def extract_location_hints(text: str) -> dict:
         
     desc_lower = text.lower()
     
-    near_matches = re.finditer(r"near\s+([a-z0-9\s]+?)(?=\.|,|and|$)", desc_lower)
+    near_matches = re.finditer(r"near\s+([a-z0-9\s]+?)(?=\.|,|and|\bon\b|$)", desc_lower)
     for m in near_matches:
         hints["near_refs"].append(m.group(1).strip())
         
-    at_matches = re.finditer(r"at\s+([a-z0-9\s]+?)(?=\.|,|and|$)", desc_lower)
+    at_matches = re.finditer(r"at\s+([a-z0-9\s]+?)(?=\.|,|and|\bon\b|$)", desc_lower)
     for m in at_matches:
         hints["landmarks"].append(m.group(1).strip())
         
-    front_matches = re.finditer(r"in front of\s+([a-z0-9\s]+?)(?=\.|,|and|$)", desc_lower)
+    front_matches = re.finditer(r"in front of\s+([a-z0-9\s]+?)(?=\.|,|and|\bon\b|$)", desc_lower)
     for m in front_matches:
         hints["landmarks"].append(m.group(1).strip())
         
@@ -312,11 +312,10 @@ def extract_location_hints(text: str) -> dict:
     for m in gate_matches:
         hints["landmarks"].append(m.group(0).strip())
         
-    road_matches = re.finditer(r"([a-z0-9\s]+?(?:road|street|avenue|lane))", desc_lower)
+    road_matches = re.finditer(r"(?:(?:on|along|at)\s+)?([a-z0-9]+(?:\s+[a-z0-9]+){0,3}\s+(?:road|street|avenue|lane))", desc_lower)
     for m in road_matches:
         rd = m.group(1).strip()
-        if len(rd.split()) <= 4:
-            hints["road_refs"].append(rd)
+        hints["road_refs"].append(rd)
             
     return hints
 
@@ -324,7 +323,8 @@ def summarize_complaint(description: str, max_words: int = 20) -> str:
     if not description:
         return ""
         
-    first_sentence = re.split(r'[.!?]', description)[0].strip()
+    trimmed = description.strip()
+    first_sentence = re.split(r'[.!?]', trimmed)[0].strip()
     words = first_sentence.split()
     
     if len(words) > max_words:
@@ -334,7 +334,10 @@ def summarize_complaint(description: str, max_words: int = 20) -> str:
             words = words[:max_words]
         summary = " ".join(words) + "..."
     else:
-        summary = first_sentence
+        if trimmed.endswith(".") and not first_sentence.endswith("."):
+            summary = first_sentence + "."
+        else:
+            summary = first_sentence
         
     if summary:
         summary = summary[0].upper() + summary[1:]

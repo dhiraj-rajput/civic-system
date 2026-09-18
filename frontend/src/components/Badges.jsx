@@ -3,6 +3,8 @@ const STATUS_COLORS = {
   Assigned: "bg-[var(--status-assigned)]",
   "In Progress": "bg-[var(--status-inprogress)]",
   Resolved: "bg-[var(--status-resolved)]",
+  Closed: "bg-emerald-500",
+  Reopened: "bg-rose-500",
 };
 
 const PRIORITY_COLORS = {
@@ -22,9 +24,9 @@ function Tag({ color, label }) {
 }
 
 export function StatusBadge({ status }) {
-  return <Tag color={STATUS_COLORS[status]} label={status} />;
+  return <Tag color={STATUS_COLORS[status] || "bg-gray-400"} label={status} />;
 }
 
 export function PriorityBadge({ priority }) {
-  return <Tag color={PRIORITY_COLORS[priority]} label={priority} />;
+  return <Tag color={PRIORITY_COLORS[priority] || "bg-gray-400"} label={priority} />;
 }

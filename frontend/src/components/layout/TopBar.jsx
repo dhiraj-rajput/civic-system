@@ -36,7 +36,7 @@ export default function TopBar({ onMenuClick }) {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light font-medium text-white shadow-sm ring-2 ring-transparent transition-all hover:ring-focus focus:outline-none focus:ring-focus"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950 font-bold shadow-sm ring-2 ring-transparent transition-all hover:ring-focus focus:outline-none focus:ring-focus"
             >
               {user.name.charAt(0).toUpperCase()}
             </button>

@@ -51,12 +51,14 @@ async def create_department(
     payload: DepartmentCreate, _admin: dict = Depends(require_role("admin"))
 ):
     db = get_db()
-    if await db.departments.find_one({"category": payload.category}):
+    # Check if department with exact same name already exists
+    if await db.departments.find_one({"name": {"$regex": f"^{payload.name.strip()}$", "$options": "i"}}):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            f"A department is already mapped to category '{payload.category}'",
+            f"A department named '{payload.name}' already exists.",
         )
     doc = payload.model_dump()
+    doc["name"] = doc["name"].strip()
     result = await db.departments.insert_one(doc)
     doc["_id"] = result.inserted_id
     return _to_out(doc)
@@ -72,12 +74,28 @@ async def update_department(
     if not ObjectId.is_valid(department_id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid department id")
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
     if updates:
         await db.departments.update_one({"_id": ObjectId(department_id)}, {"$set": updates})
     doc = await db.departments.find_one({"_id": ObjectId(department_id)})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Department not found")
     return _to_out(doc)
+
+
+@router.delete("/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_department(
+    department_id: str,
+    _admin: dict = Depends(require_role("admin")),
+):
+    db = get_db()
+    if not ObjectId.is_valid(department_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid department id")
+    res = await db.departments.delete_one({"_id": ObjectId(department_id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Department not found")
+    return None
 
 
 async def seed_default_departments(db) -> None:

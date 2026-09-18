@@ -1,20 +1,19 @@
-"""Owner: analytics track (see TASKS.md). Depends on complaints track merged
-(reads the `complaints` collection; add no writes here).
-
-by_priority / totals extend the by_status+by_department shape from ResolveAI's
-GET /admin/analytics (adapted: this project has no departments, so
-`assigned_to` stands in). /hotspots and /sla are new -- they directly answer
-the case study's "high-priority locations" and "SLA performance" requirements,
-which neither scaffold had implemented. Router-level `require_role("admin")`
-matches ResolveAI's admin-only analytics gate."""
+"""Analytics Router.
+Provides summary metrics, SLA performance, aging alerts, trend analytics,
+hotspots, and geographic heatmap data for administrative dashboards.
+"""
 from datetime import datetime, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
 from app.core.deps import require_role
 
 router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Depends(require_role("admin"))])
+
+ACTIVE_STATUSES = ["New", "Assigned", "In Progress", "Reopened"]
+RESOLVED_STATUSES = ["Resolved", "Closed"]
 
 
 @router.get("/summary")
@@ -31,15 +30,18 @@ async def summary():
     ).to_list(None)
 
     total_complaints = await db.complaints.count_documents({})
-    unresolved_count = await db.complaints.count_documents({"status": {"$ne": "Resolved"}})
+    # Unresolved complaints are those in active statuses
+    unresolved_count = await db.complaints.count_documents({"status": {"$in": ACTIVE_STATUSES}})
+    resolved_count = await db.complaints.count_documents({"status": {"$in": RESOLVED_STATUSES}})
     duplicate_count = await db.complaints.count_documents({"is_duplicate": True})
     unassigned_count = await db.complaints.count_documents(
-        {"assigned_to": None, "status": {"$ne": "Resolved"}}
+        {"assigned_to": None, "status": {"$in": ACTIVE_STATUSES}}
     )
 
     return {
         "total_complaints": total_complaints,
         "unresolved_count": unresolved_count,
+        "resolved_count": resolved_count,
         "duplicate_count": duplicate_count,
         "unassigned_count": unassigned_count,
         "by_status": by_status,
@@ -54,7 +56,7 @@ async def aging(sla_hours: int = 72):
     now = datetime.utcnow()
     cutoff = now - timedelta(hours=sla_hours)
     docs = await db.complaints.find(
-        {"status": {"$ne": "Resolved"}, "created_at": {"$lt": cutoff}}
+        {"status": {"$in": ACTIVE_STATUSES}, "created_at": {"$lt": cutoff}}
     ).sort("created_at", 1).to_list(200)
     for d in docs:
         d["id"] = str(d.pop("_id"))
@@ -64,13 +66,10 @@ async def aging(sla_hours: int = 72):
 
 @router.get("/hotspots")
 async def hotspots(limit: int = 10, grid_precision: int = 3):
-    """Cluster unresolved complaints into coarse location buckets (rounding
-    lat/lng to `grid_precision` decimals -- ~100m at precision 3) to surface
-    the case study's "high-priority locations". Returns clusters sorted by
-    total priority score, highest first."""
+    """Cluster active complaints into coarse geographic buckets to highlight dense problem areas."""
     db = get_db()
     pipeline = [
-        {"$match": {"status": {"$ne": "Resolved"}}},
+        {"$match": {"status": {"$in": ACTIVE_STATUSES}}},
         {
             "$project": {
                 "category": 1,
@@ -127,16 +126,13 @@ async def hotspots(limit: int = 10, grid_precision: int = 3):
 
 @router.get("/sla")
 async def sla(sla_hours: int = 72):
-    """SLA performance: what fraction of resolved complaints were resolved
-    within `sla_hours`, average resolution time, and how many open complaints
-    are already breaching SLA. Directly answers the case study's "SLA
-    performance" requirement (not present in either source scaffold)."""
+    """SLA performance: fraction of complaints resolved within sla_hours and current breach volume."""
     db = get_db()
     now = datetime.utcnow()
     cutoff = now - timedelta(hours=sla_hours)
 
     resolved_docs = await db.complaints.find(
-        {"status": "Resolved", "resolved_at": {"$ne": None}}
+        {"status": {"$in": RESOLVED_STATUSES}, "resolved_at": {"$ne": None}}
     ).to_list(None)
 
     resolved_count = len(resolved_docs)
@@ -152,9 +148,9 @@ async def sla(sla_hours: int = 72):
     sla_compliance_pct = round(100 * within_sla / resolved_count, 1) if resolved_count else None
 
     breaching_now = await db.complaints.count_documents(
-        {"status": {"$ne": "Resolved"}, "created_at": {"$lt": cutoff}}
+        {"status": {"$in": ACTIVE_STATUSES}, "created_at": {"$lt": cutoff}}
     )
-    open_count = await db.complaints.count_documents({"status": {"$ne": "Resolved"}})
+    open_count = await db.complaints.count_documents({"status": {"$in": ACTIVE_STATUSES}})
 
     return {
         "sla_hours": sla_hours,
@@ -169,20 +165,10 @@ async def sla(sla_hours: int = 72):
 
 @router.get("/trend")
 async def trend(days: int = 30):
-    """Daily complaint volume and resolution trend for the past N days.
-
-    Returns one object per day with:
-      - date       : YYYY-MM-DD
-      - filed      : complaints created on that day
-      - resolved   : complaints resolved on that day
-      - open       : cumulative unresolved as of end-of-day (approximated)
-    Used by the Admin dashboard LineChart / AreaChart.
-    """
     db = get_db()
     now = datetime.utcnow()
     start = now - timedelta(days=days)
 
-    # Aggregate filed per day
     filed_pipeline = [
         {"$match": {"created_at": {"$gte": start}}},
         {
@@ -196,7 +182,6 @@ async def trend(days: int = 30):
             }
         },
     ]
-    # Aggregate resolved per day
     resolved_pipeline = [
         {"$match": {"resolved_at": {"$gte": start, "$ne": None}}},
         {
@@ -221,7 +206,6 @@ async def trend(days: int = 30):
     filed_map = {key(d): d["count"] for d in filed_raw}
     resolved_map = {key(d): d["count"] for d in resolved_raw}
 
-    # Build ordered day list
     result = []
     for i in range(days):
         day = start + timedelta(days=i + 1)
@@ -234,3 +218,53 @@ async def trend(days: int = 30):
 
     return result
 
+
+@router.get("/heatmap")
+async def heatmap(
+    category: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    days: Optional[int] = Query(None),
+    recurring_only: bool = Query(False),
+):
+    """Returns granular complaint points for the interactive Civic Heatmap with multi-parameter filtering."""
+    db = get_db()
+    query: dict = {}
+
+    if category and category != "All":
+        query["category"] = category
+    if priority and priority != "All":
+        query["priority_label"] = priority
+    if status_filter and status_filter != "All":
+        query["status"] = status_filter
+    if recurring_only:
+        query["is_duplicate"] = True
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        query["created_at"] = {"$gte": cutoff}
+
+    docs = await db.complaints.find(query).limit(500).to_list(500)
+    now = datetime.utcnow()
+
+    points = []
+    for d in docs:
+        coords = d.get("location", {}).get("coordinates", [0, 0])
+        created_at = d.get("created_at", now)
+        hours_elapsed = (now - created_at).total_seconds() / 3600
+        points.append({
+            "id": str(d["_id"]),
+            "complaint_id": d.get("complaint_id", ""),
+            "category": d.get("category", "other"),
+            "priority_score": d.get("priority_score", 0.0),
+            "priority_label": d.get("priority_label", "Low"),
+            "status": d.get("status", "New"),
+            "lat": coords[1],
+            "lng": coords[0],
+            "address_text": d.get("address_text", ""),
+            "is_duplicate": d.get("is_duplicate", False),
+            "duplicate_group_id": d.get("duplicate_group_id"),
+            "hours_elapsed": round(hours_elapsed, 1),
+            "is_sla_breached": hours_elapsed > 72 and d.get("status") in ACTIVE_STATUSES,
+        })
+
+    return points

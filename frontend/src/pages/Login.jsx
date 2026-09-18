@@ -35,12 +35,59 @@ export default function Login() {
   return (
     <AuthLayout>
       <div className="w-full">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">Welcome back</h1>
-          <p className="mt-2 text-ink-secondary">Sign in to your civic portal account</p>
+        <div className="mb-6">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-ink">Welcome back</h1>
+          <p className="mt-1 text-sm text-ink-secondary">Sign in to your civic portal account</p>
+        </div>
+
+        {/* Quick Demo Credentials for Hackathon Judges & Evaluators */}
+        <div className="mb-6 rounded-xl border border-border bg-surface-muted/60 p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">
+              Quick Persona Fill
+            </span>
+            <span className="text-[10px] text-ink-muted">1-click fill</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@city.gov");
+                setPassword("Admin@1234");
+              }}
+              className="flex flex-col items-start p-2.5 rounded-lg border border-border bg-card hover:border-amber-400/50 hover:shadow-sm text-left transition-all group cursor-pointer"
+            >
+              <span className="text-xs font-bold text-ink group-hover:text-amber-400 transition-colors">Admin</span>
+              <span className="text-[10px] text-ink-muted truncate w-full">admin@city.gov</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("officer.liam@city.gov");
+                setPassword("Officer@1234");
+              }}
+              className="flex flex-col items-start p-2.5 rounded-lg border border-border bg-card hover:border-amber-400/50 hover:shadow-sm text-left transition-all group cursor-pointer"
+            >
+              <span className="text-xs font-bold text-ink group-hover:text-amber-400 transition-colors">Officer Liam</span>
+              <span className="text-[10px] text-ink-muted truncate w-full">officer.liam@city.gov</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("citizen@example.com");
+                setPassword("Citizen@1234");
+              }}
+              className="flex flex-col items-start p-2.5 rounded-lg border border-border bg-card hover:border-amber-400/50 hover:shadow-sm text-left transition-all group cursor-pointer"
+            >
+              <span className="text-xs font-bold text-ink group-hover:text-amber-400 transition-colors">Citizen</span>
+              <span className="text-[10px] text-ink-muted truncate w-full">citizen@example.com</span>
+            </button>
+          </div>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Email address">
             <TextInput 
               type="email" 

@@ -16,3 +16,4 @@ mongomock
 mongomock-motor
 requests
 rapidfuzz
+boto3

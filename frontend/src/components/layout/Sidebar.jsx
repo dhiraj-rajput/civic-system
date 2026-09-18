@@ -1,6 +1,7 @@
 import { LayoutDashboard, FilePlus, ClipboardList, Inbox, Building2, BarChart3, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { CivicEmblem } from "../CivicLogo.jsx";
 
 const NAV_CONFIG = {
   citizen: [
@@ -30,18 +31,20 @@ export default function Sidebar({ collapsed, onToggle }) {
     <aside 
       className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-hover bg-sidebar text-sidebar-text transition-all duration-300 ${collapsed ? 'w-[var(--sidebar-collapsed)]' : 'w-[var(--sidebar-width)]'}`}
     >
-      <div className="flex h-[var(--topbar-height)] shrink-0 items-center justify-between border-b border-sidebar-hover px-4">
+      <div className="flex h-[var(--topbar-height)] shrink-0 items-center justify-between border-b border-sidebar-hover px-3.5">
         {!collapsed && (
-          <Link to="/" className="flex items-center gap-2 font-display text-lg font-semibold text-white">
-            <span className="flex h-8 w-8 items-center justify-center rounded bg-brand text-white">
-              C
-            </span>
-            CivicPortal
+          <Link to="/" className="flex items-center gap-2 font-display text-lg font-semibold text-white group">
+            <CivicEmblem size={26} />
+            <div className="flex items-center gap-1 leading-none">
+              <span className="text-white font-bold tracking-tight text-base font-serif">Civic</span>
+              <span className="text-amber-400 font-bold tracking-tight text-base font-serif">Portal</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30 font-semibold ml-1">311</span>
+            </div>
           </Link>
         )}
         {collapsed && (
-          <Link to="/" className="mx-auto flex h-8 w-8 items-center justify-center rounded bg-brand font-display font-semibold text-white">
-            C
+          <Link to="/" className="mx-auto flex items-center justify-center" title="CivicPortal">
+            <CivicEmblem size={26} />
           </Link>
         )}
         {!collapsed && (

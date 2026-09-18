@@ -1,11 +1,11 @@
 import { Loader2 } from "lucide-react";
 
 const VARIANTS = {
-  primary: "bg-brand text-white hover:bg-brand-light",
-  accent: "bg-accent text-white hover:bg-accent-dark",
-  outline: "border border-border-strong text-ink hover:border-brand hover:text-brand",
+  primary: "bg-slate-900 text-white hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 dark:font-semibold shadow-sm",
+  accent: "bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold shadow-sm",
+  outline: "border border-border text-ink hover:border-amber-500 hover:text-amber-600 dark:hover:border-amber-400 dark:hover:text-amber-400",
   danger: "border border-danger text-danger hover:bg-danger hover:text-white",
-  ghost: "text-ink-secondary hover:text-ink hover:bg-hover",
+  ghost: "text-ink-secondary hover:text-ink hover:bg-hover dark:hover:bg-[#222226] dark:hover:text-amber-400",
 };
 
 const SIZES = {

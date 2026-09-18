@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import AdminComplaints from "./pages/admin/Complaints.jsx";
 import AdminDepartments from "./pages/admin/Departments.jsx";
 import AdminAnalytics from "./pages/admin/Analytics.jsx";
+import ComplaintDetail from "./pages/ComplaintDetail.jsx";
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
                   <Route path="/" element={<CitizenDashboard />} />
                   <Route path="/submit" element={<CitizenSubmit />} />
                   <Route path="/complaints" element={<CitizenComplaints />} />
+                  <Route path="/complaints/:id" element={<ComplaintDetail />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>
@@ -50,6 +52,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<OfficerDashboard />} />
                   <Route path="/complaints" element={<OfficerComplaints />} />
+                  <Route path="/complaints/:id" element={<ComplaintDetail />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>
@@ -61,6 +64,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<AdminDashboard />} />
                   <Route path="/complaints" element={<AdminComplaints />} />
+                  <Route path="/complaints/:id" element={<ComplaintDetail />} />
                   <Route path="/departments" element={<AdminDepartments />} />
                   <Route path="/analytics" element={<AdminAnalytics />} />
                 </Routes>

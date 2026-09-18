@@ -66,7 +66,7 @@ export default function CitizenDashboard() {
       {/* Greeting Banner */}
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">
+          <h1 className="font-serif text-2xl font-bold text-ink">
             {getGreeting()}, {user?.name?.split(' ')[0] || 'Citizen'}
           </h1>
           <p className="text-ink-secondary mt-1">{today}</p>
@@ -99,7 +99,7 @@ export default function CitizenDashboard() {
         
         {/* Recent Activity */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold text-ink">Recent Activity</h2>
+          <h2 className="font-serif text-lg font-semibold text-ink">Recent Activity</h2>
           
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
             {loading ? (
@@ -108,11 +108,16 @@ export default function CitizenDashboard() {
               <div className="divide-y divide-border">
                 {recentComplaints.map((c) => (
                   <Link key={c.id} to="/citizen/complaints" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-surface-hover transition-colors gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div className="font-mono text-sm text-ink bg-surface-muted px-2 py-1 rounded border border-border">
-                        #{c.id.substring(0, 8)}
+                        #{c.complaint_id || c.id.substring(0, 8)}
                       </div>
-                      <div className="font-medium text-ink">{c.category}</div>
+                      {c.nyc311_unique_key && (
+                        <span className="text-[10px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">
+                          NYC 311
+                        </span>
+                      )}
+                      <div className="font-medium text-ink capitalize">{c.category}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <StatusBadge status={c.status} />

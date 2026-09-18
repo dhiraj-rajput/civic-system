@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
-import { Building2, Plus, Edit2, AlertCircle, Trash, Lightbulb, Droplets, Layout, AlertTriangle, Info } from "lucide-react";
+import { 
+  Building2, Plus, Edit2, Trash2, Lightbulb, Droplets, 
+  Layout, AlertTriangle, Users, CheckCircle2, Shield, Search
+} from "lucide-react";
 
 import { api } from "../../api/client.js";
 import { useToast } from "../../components/ui/Toast.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Panel from "../../components/ui/Panel.jsx";
 import Modal from "../../components/ui/Modal.jsx";
+import ConfirmModal from "../../components/ui/ConfirmModal.jsx";
 import { CATEGORIES } from "../../constants.js";
 
 const CATEGORY_ICONS = {
   pothole: AlertTriangle,
-  garbage: Trash,
+  garbage: Trash2,
   streetlight: Lightbulb,
   water_supply: Droplets,
   other: Layout
@@ -20,19 +24,32 @@ export default function Departments() {
   const { toast } = useToast();
   
   const [departments, setDepartments] = useState([]);
+  const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingDept, setDeletingDept] = useState(null);
   const [editingId, setEditingId] = useState(null);
   
-  const [form, setForm] = useState({ name: "", category: "other", description: "" });
+  const [form, setForm] = useState({ 
+    name: "", 
+    category: "pothole", 
+    customCategory: "", 
+    description: "", 
+    contactEmail: "" 
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.get("/departments");
-      setDepartments(data);
+      const [deptData, complaintsData] = await Promise.all([
+        api.get("/departments"),
+        api.get("/complaints").catch(() => [])
+      ]);
+      setDepartments(deptData || []);
     } catch (e) {
       toast.error(e.detail || "Could not load departments");
     } finally {
@@ -44,22 +61,27 @@ export default function Departments() {
     loadData();
   }, []);
 
-  const takenCategories = departments.map(d => d.category);
-  const availableCategories = CATEGORIES.filter(c => !takenCategories.includes(c.value));
-  const allCategoriesTaken = availableCategories.length === 0;
-
   const openAddModal = () => {
-    if (allCategoriesTaken) {
-      toast.info("Every category already has a department — edit an existing one instead.");
-      return;
-    }
-    setForm({ name: "", category: availableCategories[0].value, description: "" });
+    setForm({ 
+      name: "", 
+      category: "pothole", 
+      customCategory: "", 
+      description: "", 
+      contactEmail: "" 
+    });
     setEditingId(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (dept) => {
-    setForm({ name: dept.name, category: dept.category, description: dept.description || "" });
+    const isStandard = CATEGORIES.some(c => c.value === dept.category);
+    setForm({ 
+      name: dept.name, 
+      category: isStandard ? dept.category : "custom", 
+      customCategory: isStandard ? "" : dept.category, 
+      description: dept.description || "",
+      contactEmail: dept.contact_email || ""
+    });
     setEditingId(dept.id);
     setIsModalOpen(true);
   };
@@ -69,15 +91,25 @@ export default function Departments() {
       toast.error("Department name is required");
       return;
     }
+
+    const finalCategory = form.category === "custom" 
+      ? (form.customCategory.trim().toLowerCase().replace(/\s+/g, '_') || "other")
+      : form.category;
     
     setSubmitting(true);
     try {
+      const payload = {
+        name: form.name.trim(),
+        category: finalCategory,
+        description: form.description.trim()
+      };
+
       if (editingId) {
-        await api.patch(`/departments/${editingId}`, form);
-        toast.success("Department updated");
+        await api.patch(`/departments/${editingId}`, payload);
+        toast.success("Department updated successfully");
       } else {
-        await api.post("/departments", form);
-        toast.success("Department created");
+        await api.post("/departments", payload);
+        toast.success(`Department "${form.name}" created successfully`);
       }
       setIsModalOpen(false);
       loadData();
@@ -88,146 +120,252 @@ export default function Departments() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingDept) return;
+    try {
+      await api.delete(`/departments/${deletingDept.id}`);
+      toast.success(`Department "${deletingDept.name}" removed`);
+      setDeleteConfirmOpen(false);
+      setDeletingDept(null);
+      loadData();
+    } catch (e) {
+      toast.error(e.detail || "Could not delete department");
+    }
+  };
+
+  const filteredDepts = departments.filter(d => 
+    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (d.description && d.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-8 animate-in fade-in duration-300">
       
-      {/* 1. Page Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <Building2 size={24} className="text-[var(--brand-primary)]" />
-          Department Management
-        </h1>
-        <Button onClick={openAddModal} className="gap-2" disabled={allCategoriesTaken} title={allCategoriesTaken ? "All categories already have a department — edit one instead" : undefined}>
-          <Plus size={16} /> Add Department
+      {/* 1. Page Header with Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2.5">
+            <Building2 size={26} className="text-[var(--brand-primary)]" />
+            Department Management
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Configure municipal agencies, emergency response divisions, and service routing
+          </p>
+        </div>
+        <Button onClick={openAddModal} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+          <Plus size={18} /> Add Department
         </Button>
       </div>
 
-      {allCategoriesTaken && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-md p-4 flex items-start gap-3">
-          <AlertCircle size={20} className="text-[var(--brand-warning)] shrink-0 mt-0.5" />
+      {/* 2. Overview Stats & Search Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] flex items-center gap-3.5 shadow-sm">
+          <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            <Building2 size={22} />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-[var(--brand-warning)]">All categories are mapped</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">
-              Every complaint category already routes to a department. Edit an existing department below to rename it or change its description — a category can only route to one department at a time.
-            </p>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{departments.length}</div>
+            <div className="text-xs text-[var(--text-secondary)]">Active Agencies</div>
           </div>
         </div>
-      )}
 
-      {/* Auto-assign Info Panel */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-md p-4 flex items-start gap-3">
-        <Info size={20} className="text-[var(--brand-primary)] shrink-0 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--brand-primary)]">Auto-Assign Feature</h3>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            When a complaint is created, the system attempts to auto-assign it based on the complaint's category. 
-            Ensure you map exactly one department to each category to make auto-assignment work properly.
-          </p>
+        <div className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] flex items-center gap-3.5 shadow-sm">
+          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+            <CheckCircle2 size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">
+              {new Set(departments.map(d => d.category)).size}
+            </div>
+            <div className="text-xs text-[var(--text-secondary)]">Categories Covered</div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] flex items-center gap-3.5 shadow-sm">
+          <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <Shield size={22} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">Automated</div>
+            <div className="text-xs text-[var(--text-secondary)]">Category Smart-Routing</div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Department cards grid */}
+      {/* Search Filter Bar */}
+      <div className="relative">
+        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+        <input 
+          type="text" 
+          placeholder="Search department name, service category, or description..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-amber-400 dark:focus:border-amber-400 transition-colors shadow-sm"
+        />
+      </div>
+
+      {/* 3. Department Cards Grid */}
       {loading ? (
-        <div className="flex justify-center py-12 text-[var(--text-muted)]">Loading...</div>
-      ) : departments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-[var(--surface-card)] rounded-md border border-[var(--border-default)] border-dashed text-[var(--text-muted)]">
+        <div className="flex flex-col items-center justify-center py-20 text-[var(--text-muted)]">
+          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-3"></div>
+          <p className="text-sm">Loading municipal departments...</p>
+        </div>
+      ) : filteredDepts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-[var(--surface-card)] rounded-xl border border-[var(--border-default)] border-dashed text-[var(--text-muted)]">
           <Building2 size={48} className="mb-4 opacity-20" />
-          <p>No departments found</p>
-          <Button variant="outline" className="mt-4" onClick={openAddModal}>Create your first department</Button>
+          <p className="text-base font-medium text-[var(--text-primary)]">No departments found</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Try adjusting your search query or create a new agency.</p>
+          <Button variant="outline" className="mt-4 gap-2" onClick={openAddModal}>
+            <Plus size={16} /> Create Department
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {departments.map((dept) => {
-            const Icon = CATEGORY_ICONS[dept.category] || AlertCircle;
-            const categoryLabel = CATEGORIES.find(c => c.value === dept.category)?.label || dept.category;
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredDepts.map((dept) => {
+            const Icon = CATEGORY_ICONS[dept.category] || Layout;
+            const categoryLabel = CATEGORIES.find(c => c.value === dept.category)?.label || dept.category.replace(/_/g, ' ');
             
             return (
-              <Panel key={dept.id} className="flex flex-col h-full hover:-translate-y-1 transition-transform duration-200">
-                <div className="p-5 flex-1 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="font-bold text-lg text-[var(--text-primary)] leading-tight">{dept.name}</h3>
-                    <div className="p-2 bg-[var(--surface-muted)] rounded-full text-[var(--brand-primary)]" title={categoryLabel}>
-                      <Icon size={20} />
+              <div 
+                key={dept.id} 
+                className="flex flex-col h-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-card)] hover:border-slate-400 dark:hover:border-zinc-700 hover:shadow-md transition-all duration-200 overflow-hidden group"
+              >
+                <div className="p-5 flex-1 space-y-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-amber-400 border border-slate-200 dark:border-zinc-700 group-hover:scale-105 transition-transform">
+                        <Icon size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-base text-[var(--text-primary)] leading-tight group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                          {dept.name}
+                        </h3>
+                        <span className="inline-block px-2 py-0.5 mt-1 rounded text-[11px] font-mono uppercase font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-zinc-700">
+                          {categoryLabel}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
-                  <div>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--surface-muted)] border border-[var(--border-default)] text-[var(--text-secondary)] capitalize">
-                      Category: {categoryLabel}
-                    </span>
-                  </div>
-                  
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    {dept.description || <span className="italic opacity-50">No description provided</span>}
+                  <p className="text-xs text-[var(--text-secondary)] line-clamp-3 leading-relaxed">
+                    {dept.description || <span className="italic opacity-60">General municipal service department</span>}
                   </p>
                 </div>
                 
-                <div className="px-5 py-3 border-t border-[var(--border-default)] bg-[var(--surface-muted)] rounded-b-md flex justify-end">
-                  <Button variant="ghost" size="sm" onClick={() => openEditModal(dept)} className="text-[var(--text-secondary)] hover:text-[var(--brand-primary)]">
-                    <Edit2 size={14} className="mr-2" /> Edit
-                  </Button>
+                {/* Footer with Edit & Delete */}
+                <div className="px-5 py-3 border-t border-[var(--border-default)] bg-[var(--surface-muted)] flex items-center justify-between">
+                  <span className="text-[11px] text-[var(--text-muted)] font-mono flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => openEditModal(dept)} 
+                      className="h-8 px-2.5 text-xs text-[var(--text-secondary)] hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <Edit2 size={13} className="mr-1.5" /> Edit
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setDeletingDept(dept);
+                        setDeleteConfirmOpen(true);
+                      }} 
+                      className="h-8 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
                 </div>
-              </Panel>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Edit/Add Modal */}
+      {/* Add / Edit Department Modal */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={editingId ? "Edit Department" : "Add Department"}
+        title={editingId ? "Edit Municipal Department" : "Add New Department"}
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} isLoading={submitting}>
-              {editingId ? "Save Changes" : "Create Department"}
+            <Button variant="primary" onClick={handleSave} isLoading={submitting}>
+              {editingId ? "Save Changes" : "Create Agency"}
             </Button>
           </>
         }
       >
         <div className="space-y-4 py-2 text-sm text-[var(--text-primary)]">
           <div className="space-y-1.5">
-            <label className="font-medium">Department Name</label>
+            <label className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+              Department / Agency Name <span className="text-red-400">*</span>
+            </label>
             <input 
               type="text" 
-              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 focus:outline-none focus:border-[var(--brand-primary)]"
+              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-amber-400 text-sm text-[var(--text-primary)]"
               value={form.name}
               onChange={(e) => setForm({...form, name: e.target.value})}
-              placeholder="e.g., Public Works"
+              placeholder="e.g. Queens Rapid Pothole Response Taskforce"
             />
           </div>
           
           <div className="space-y-1.5">
-            <label className="font-medium">Assigned Category</label>
+            <label className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+              Primary Routing Category <span className="text-red-400">*</span>
+            </label>
             <select 
-              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 focus:outline-none focus:border-[var(--brand-primary)] capitalize"
+              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-amber-400 capitalize text-sm text-[var(--text-primary)]"
               value={form.category}
               onChange={(e) => setForm({...form, category: e.target.value})}
-              disabled={!editingId && availableCategories.length === 0}
             >
-              {(editingId
-                ? CATEGORIES.filter(c => !takenCategories.includes(c.value) || c.value === form.category)
-                : availableCategories
-              ).map((c) => (
+              {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
+              <option value="custom">+ Custom Category / Special Division</option>
             </select>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Complaints of this category will be auto-assigned here.</p>
+            {form.category === "custom" && (
+              <input 
+                type="text"
+                className="w-full mt-2 bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2 focus:outline-none focus:border-amber-400 text-sm text-[var(--text-primary)]"
+                placeholder="Type custom category name (e.g. parks_and_recreation)..."
+                value={form.customCategory}
+                onChange={(e) => setForm({...form, customCategory: e.target.value})}
+              />
+            )}
+            <p className="text-[11px] text-[var(--text-muted)] mt-1">
+              Complaints matching this category will be auto-suggested to this department during dispatch.
+            </p>
           </div>
           
           <div className="space-y-1.5">
-            <label className="font-medium">Description</label>
+            <label className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+              Department Scope & Responsibilities
+            </label>
             <textarea 
-              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-3 py-2 focus:outline-none focus:border-[var(--brand-primary)] min-h-[100px] resize-y"
+              className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-amber-400 min-h-[90px] resize-y text-sm text-[var(--text-primary)]"
               value={form.description}
               onChange={(e) => setForm({...form, description: e.target.value})}
-              placeholder="Optional description of responsibilities..."
+              placeholder="Describe jurisdictions, service hours, repair capabilities..."
             />
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Remove Department?"
+        message={`Are you sure you want to remove the "${deletingDept?.name}" department? Existing complaints will retain their historical assignment.`}
+        confirmText="Remove Department"
+        tone="red"
+      />
       
     </div>
   );

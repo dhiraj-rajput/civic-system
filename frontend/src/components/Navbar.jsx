@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "./ui/Button.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
+import CivicLogo from "./CivicLogo.jsx";
+
 /* Structural top bar (ported from ResolveAI's role-scoped sidebar as a
  * horizontal nav): swaps its link set by role, same as ResolveAI's
  * session-state-driven sidebar did. */
@@ -38,9 +40,8 @@ export default function Navbar() {
   return (
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
-          <LandPlot size={20} className="text-signal" strokeWidth={2.25} />
-          Civic Complaint Portal
+        <Link to="/" className="hover:opacity-90 transition-opacity">
+          <CivicLogo size={24} />
         </Link>
         <nav className="flex items-center gap-1 text-sm font-medium text-ink-soft">
           {links.map((l) => (

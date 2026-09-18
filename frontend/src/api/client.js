@@ -15,7 +15,11 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const isFormData = options.body instanceof FormData;
+  const headers = isFormData 
+    ? { ...(options.headers || {}) } 
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
+    
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
@@ -44,4 +48,5 @@ export const api = {
   post: (path, json) => apiFetch(path, { method: "POST", body: json !== undefined ? JSON.stringify(json) : undefined }),
   patch: (path, json) => apiFetch(path, { method: "PATCH", body: json !== undefined ? JSON.stringify(json) : "{}" }),
   del: (path) => apiFetch(path, { method: "DELETE" }),
+  upload: (path, formData) => apiFetch(path, { method: "POST", body: formData }),
 };
