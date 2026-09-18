@@ -28,14 +28,61 @@ export default function TrackComplaint() {
   const basePath = user?.role ? `/${user.role}/track` : '/citizen/track';
   const complaintsBasePath = user?.role ? `/${user.role}/complaints` : '/citizen/complaints';
 
-  // Load recent complaints for 1-click tracking
+  // Load citizen complaints with local fallback & CMP- prioritization
   useEffect(() => {
-    if (user) {
-      api.get("/complaints?limit=10")
-        .then((res) => setMyRecentComplaints(res || []))
-        .catch(() => {});
+    async function loadCitizenHistory() {
+      try {
+        const endpoint = user?.role === "citizen" ? "/complaints/mine" : "/complaints?limit=30";
+        const res = await api.get(endpoint);
+        let list = Array.isArray(res) ? [...res] : [];
+
+        // Check local storage for any newly created complaints
+        try {
+          const localIds = JSON.parse(localStorage.getItem("civic_citizen_recent_ids") || "[]");
+          if (localIds.length > 0) {
+            const existingIds = new Set(list.map((c) => c.complaint_id || c.id));
+            const missingIds = localIds.filter((id) => !existingIds.has(id));
+            for (const mId of missingIds.slice(0, 5)) {
+              try {
+                const doc = await api.get(`/complaints/${encodeURIComponent(mId)}`);
+                if (doc) list.unshift(doc);
+              } catch (e) {
+                try {
+                  const docPub = await api.get(`/complaints/public-track/${encodeURIComponent(mId)}`);
+                  if (docPub) list.unshift(docPub);
+                } catch (e2) {}
+              }
+            }
+          }
+        } catch (e) {}
+
+        // Prioritize citizen-created issues (CMP- prefix) and newest submissions first
+        list.sort((a, b) => {
+          const aIsUser = String(a.complaint_id || a.id).startsWith("CMP-");
+          const bIsUser = String(b.complaint_id || b.id).startsWith("CMP-");
+          if (aIsUser && !bIsUser) return -1;
+          if (!aIsUser && bIsUser) return 1;
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+
+        setMyRecentComplaints(list);
+
+        // Auto-select latest active issue if none selected
+        if (!routeId && list.length > 0) {
+          const defaultTarget = list.find((c) => c.status !== "Closed") || list[0];
+          const targetId = defaultTarget.complaint_id || defaultTarget.id;
+          setSearchId(targetId);
+          fetchComplaint(targetId);
+        }
+      } catch (err) {
+        console.error("Failed to load complaint history:", err);
+      }
     }
-  }, [user]);
+
+    if (user) {
+      loadCitizenHistory();
+    }
+  }, [user, routeId]);
 
   const fetchComplaint = async (targetId) => {
     if (!targetId || !targetId.trim()) return;
@@ -126,42 +173,72 @@ export default function TrackComplaint() {
             </Button>
           </div>
         </form>
-
       </Panel>
 
-      {/* Short History of Recently Uploaded Complaints (No Description) */}
-      {myRecentComplaints.length > 0 && (
-        <Panel className="p-5 sm:p-6 shadow-sm border border-border space-y-3">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <h2 className="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
-              <Clock size={16} className="text-brand" />
-              Recent Submissions History
-            </h2>
-            <span className="text-xs text-ink-muted">
-              {myRecentComplaints.length} recent report{myRecentComplaints.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+      {/* Submission History: IDs & Issues with live ongoing updates and completed redirect */}
+      <Panel className="p-5 sm:p-6 shadow-sm border border-border space-y-3">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h2 className="font-semibold text-sm sm:text-base text-ink flex items-center gap-2">
+            <Clock size={16} className="text-brand" />
+            Your Reported Issues History
+          </h2>
+          <span className="text-xs text-ink-muted">
+            {myRecentComplaints.length} report{myRecentComplaints.length !== 1 ? "s" : ""} logged
+          </span>
+        </div>
 
+        {myRecentComplaints.length === 0 ? (
+          <div className="text-center py-8 space-y-3">
+            <p className="text-xs text-ink-muted">
+              You have not filed any civic complaints yet.
+            </p>
+            <Link to="/citizen/submit">
+              <Button variant="primary" size="sm">
+                Report a New Issue
+              </Button>
+            </Link>
+          </div>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[500px]">
+            <table className="w-full text-left text-xs min-w-[540px]">
               <thead>
                 <tr className="border-b border-border text-ink-muted uppercase tracking-wider text-[10px]">
                   <th className="pb-2.5 font-semibold">Ticket ID</th>
-                  <th className="pb-2.5 font-semibold">Category</th>
-                  <th className="pb-2.5 font-semibold">Status</th>
-                  <th className="pb-2.5 font-semibold">Priority</th>
-                  <th className="pb-2.5 font-semibold">Uploaded / Filed</th>
+                  <th className="pb-2.5 font-semibold">Issue</th>
+                  <th className="pb-2.5 font-semibold">Live Progress & Update</th>
                   <th className="pb-2.5 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {myRecentComplaints.map((c) => {
                   const id = c.complaint_id || c.id;
-                  const isSelected = searchId === id || (complaint && (complaint.complaint_id === id || complaint.id === id));
+                  const isCompleted = c.status === "Resolved" || c.status === "Closed";
+                  const isSelected =
+                    searchId === id ||
+                    (complaint && (complaint.complaint_id === id || complaint.id === id));
+
+                  // Live progress description
+                  let updateText = "Intake received — awaiting dispatch";
+                  if (c.status === "Assigned") {
+                    updateText = `Dispatched to ${c.assigned_to || "Department"}`;
+                  } else if (c.status === "In Progress") {
+                    updateText = `Field crew dispatched · Working on site`;
+                  } else if (c.status === "Resolved") {
+                    updateText = `Repairs completed · Citizen verification open`;
+                  } else if (c.status === "Closed") {
+                    updateText = `Resolution confirmed & case closed`;
+                  }
+
                   return (
-                    <tr 
+                    <tr
                       key={id}
-                      onClick={() => handleQuickSelect(id)}
+                      onClick={() => {
+                        if (isCompleted) {
+                          navigate(`${complaintsBasePath}/${id}`);
+                        } else {
+                          handleQuickSelect(id);
+                        }
+                      }}
                       className={`cursor-pointer transition-colors hover:bg-surface-hover ${
                         isSelected ? "bg-brand/5 font-medium" : ""
                       }`}
@@ -170,34 +247,48 @@ export default function TrackComplaint() {
                         #{id}
                       </td>
                       <td className="py-3 capitalize text-ink whitespace-nowrap font-medium">
-                        {c.category?.replace(/_/g, " ")}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-brand/60 shrink-0"></span>
+                          {c.category?.replace(/_/g, " ") || "Civic Issue"}
+                        </span>
                       </td>
                       <td className="py-3 whitespace-nowrap">
-                        <StatusBadge status={c.status} />
-                      </td>
-                      <td className="py-3 whitespace-nowrap">
-                        <PriorityBadge priority={c.priority_label} />
-                      </td>
-                      <td className="py-3 text-ink-muted whitespace-nowrap">
-                        {new Date(c.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric"
-                        })}
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={c.status} />
+                          <span className="text-[11px] text-ink-muted">
+                            {updateText}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3 text-right whitespace-nowrap">
-                        <Button
-                          type="button"
-                          variant={isSelected ? "primary" : "outline"}
-                          size="sm"
-                          className="h-7 px-3 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQuickSelect(id);
-                          }}
-                        >
-                          {isSelected ? "Tracking" : "Track"}
-                        </Button>
+                        {isCompleted ? (
+                          <Link
+                            to={`${complaintsBasePath}/${id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-3 text-xs flex items-center gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 ml-auto"
+                            >
+                              View Details & Audit <ArrowRight size={12} />
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant={isSelected ? "primary" : "outline"}
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickSelect(id);
+                            }}
+                          >
+                            {isSelected ? "Tracking Live" : "Track Live"}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -205,8 +296,8 @@ export default function TrackComplaint() {
               </tbody>
             </table>
           </div>
-        </Panel>
-      )}
+        )}
+      </Panel>
       {error && (
         <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs sm:text-sm flex items-start gap-3">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />

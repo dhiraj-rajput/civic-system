@@ -484,7 +484,7 @@ async def heatmap(
         "duplicate_group_id": 1,
         "created_at": 1,
     }
-    docs = await db.complaints.find(query, projection=projection).sort("created_at", -1).to_list(1500)
+    docs = await db.complaints.find(query, projection=projection).sort("created_at", -1).to_list(5000)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     points = []

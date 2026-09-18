@@ -70,6 +70,9 @@ export default function CivicHeatmap() {
     if (borough !== "All" && borough !== "All Locations" && borough !== "All Boroughs" && BOROUGH_COORDINATES[borough]) {
       setMapCenter(BOROUGH_COORDINATES[borough]);
       setMapZoom(13);
+    } else {
+      setMapCenter([40.7128, -74.0060]);
+      setMapZoom(11);
     }
   };
 

@@ -133,53 +133,95 @@ export default function ComplaintMap({
           .bindPopup(`<div class="text-xs font-sans"><strong>Complaint Location</strong><br/>${lat.toFixed(4)}, ${lng.toFixed(4)}</div>`);
         map.setView([lat, lng], zoom);
       } else if (mode === "multi" && complaints.length > 0) {
-        const bounds = [];
-        complaints.forEach((c) => {
-          const cLat = c.location?.lat ?? c.lat;
-          const cLng = c.location?.lng ?? c.lng;
-          if (cLat && cLng) {
-            bounds.push([cLat, cLng]);
-            const priorityColor =
-              c.priority_label === "Critical"
-                ? "#ef4444"
-                : c.priority_label === "High"
-                ? "#f97316"
-                : c.priority_label === "Medium"
-                ? "#f59e0b"
-                : "#64748b";
+        const allCoords = [];
+        const mainClusterCoords = [];
 
-            const marker = L.marker([cLat, cLng], {
-              icon: createIcon(priorityColor, c.priority_label === "Critical"),
+        // Check if there is an explicit center requested (e.g. borough chosen)
+        const hasCustomCenter = lat && lng && (lat !== 40.7128 || lng !== -74.0060);
+
+        complaints.forEach((c) => {
+          const cLat = Number(c.location?.lat ?? c.lat);
+          const cLng = Number(c.location?.lng ?? c.lng);
+          if (!isNaN(cLat) && !isNaN(cLng) && (cLat !== 0 || cLng !== 0)) {
+            allCoords.push([cLat, cLng]);
+
+            // Track main cluster region (NYC metro area ~ 40.4 to 41.2 N, -74.4 to -73.5 W)
+            if (cLat >= 40.4 && cLat <= 41.2 && cLng >= -74.4 && cLng <= -73.5) {
+              mainClusterCoords.push([cLat, cLng]);
+            }
+
+            const priority = c.priority_label || "Low";
+            const priorityColor =
+              priority === "Critical"
+                ? "#ef4444"
+                : priority === "High"
+                ? "#f97316"
+                : priority === "Medium"
+                ? "#f59e0b"
+                : "#3b82f6";
+
+            const radius = priority === "Critical" ? 9 : priority === "High" ? 7.5 : priority === "Medium" ? 6 : 5;
+
+            // Render high-performance Leaflet circleMarker
+            const marker = L.circleMarker([cLat, cLng], {
+              radius: radius,
+              fillColor: priorityColor,
+              color: "#ffffff",
+              weight: 1.5,
+              opacity: 0.95,
+              fillOpacity: 0.75,
+              className: "hotspot-marker",
             }).addTo(markersGroup);
 
             const popupContent = `
-              <div style="font-family: sans-serif; min-width: 160px; padding: 2px;">
-                <div style="font-size: 11px; font-weight: bold; color: ${priorityColor}; text-transform: uppercase;">
-                  ${c.priority_label || "Low"} Priority
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 170px; padding: 4px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span style="font-size: 10px; font-weight: 700; color: ${priorityColor}; text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${priority} Priority
+                  </span>
+                  <span style="font-size: 10px; color: #64748b; font-family: monospace;">
+                    ${c.complaint_id || ""}
+                  </span>
                 </div>
-                <div style="font-size: 13px; font-weight: 600; margin: 2px 0;">
-                  ${c.complaint_id || "Complaint"}
+                <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 2px 0; text-transform: capitalize;">
+                  ${(c.category || "Issue").replace(/_/g, " ")}
                 </div>
-                <div style="font-size: 12px; color: #4b5563; text-transform: capitalize;">
-                  ${c.category || "Issue"} · ${c.status || "Open"}
+                <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                  Status: <strong>${c.status || "New"}</strong>
                 </div>
                 ${
                   c.address_text
-                    ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">📍 ${c.address_text}</div>`
+                    ? `<div style="font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px; margin-top: 4px;">📍 ${c.address_text}</div>`
                     : ""
                 }
               </div>
             `;
 
             marker.bindPopup(popupContent);
+
+            // Hover interactions
+            marker.on("mouseover", function () {
+              this.setRadius(radius + 3);
+              this.setStyle({ fillOpacity: 0.95, weight: 2.5 });
+            });
+            marker.on("mouseout", function () {
+              this.setRadius(radius);
+              this.setStyle({ fillOpacity: 0.75, weight: 1.5 });
+            });
+
             if (onPinClick) {
               marker.on("click", () => onPinClick(c));
             }
           }
         });
 
-        if (bounds.length > 0) {
-          map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
+        // Smart Bounds: avoid zooming to entire globe if an outlier (e.g. Pune vs NYC) exists
+        if (hasCustomCenter) {
+          map.setView([lat, lng], zoom || 13);
+        } else if (mainClusterCoords.length > 0 && mainClusterCoords.length >= allCoords.length * 0.7) {
+          map.fitBounds(mainClusterCoords, { padding: [35, 35], maxZoom: 13 });
+        } else if (allCoords.length > 0) {
+          map.fitBounds(allCoords, { padding: [35, 35], maxZoom: 13 });
         } else if (lat && lng) {
           map.setView([lat, lng], zoom || 12);
         }

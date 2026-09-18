@@ -221,6 +221,13 @@ export default function SubmitComplaint() {
       
       const response = await api.post('/complaints', payload);
       setSubmittedData(response);
+      try {
+        const savedIds = JSON.parse(localStorage.getItem('civic_citizen_recent_ids') || '[]');
+        const newId = response.complaint_id || response.id;
+        if (newId && !savedIds.includes(newId)) {
+          localStorage.setItem('civic_citizen_recent_ids', JSON.stringify([newId, ...savedIds].slice(0, 30)));
+        }
+      } catch (e) {}
       toast.success('Complaint submitted successfully!');
     } catch (err) {
       toast.error(err.detail || 'Failed to submit complaint');
@@ -302,7 +309,7 @@ export default function SubmitComplaint() {
           <Button onClick={resetForm} variant="outline" className="w-full sm:w-auto">
             Report Another Issue
           </Button>
-          <Link to={`/track/${encodeURIComponent(submittedData.complaint_id || submittedData.id)}`}>
+          <Link to={`/citizen/track/${encodeURIComponent(submittedData.complaint_id || submittedData.id)}`}>
             <Button variant="primary" className="w-full sm:w-auto flex items-center justify-center gap-2">
               Track Status Real-Time <ArrowRight size={16} />
             </Button>

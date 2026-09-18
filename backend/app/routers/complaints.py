@@ -145,8 +145,10 @@ def _can_view(doc: dict, user: dict) -> bool:
             or bool(doc.get("nyc311_unique_key"))
         )
     if user["role"] == "citizen":
+        user_id = str(user.get("id"))
+        doc_citizen_id = str(doc.get("citizen_id"))
         return (
-            doc["citizen_id"] == user["id"]
+            doc_citizen_id == user_id
             or doc.get("citizen_id") == "citizen-nyc-seed"
             or bool(doc.get("nyc311_unique_key"))
         )
@@ -323,9 +325,14 @@ async def create_complaint(
 @router.get("/mine", response_model=list[ComplaintOut])
 async def list_my_complaints(current_user: dict = Depends(require_role("citizen"))):
     db = get_db()
-    docs = await db.complaints.find({"citizen_id": current_user["id"]}).sort(
-        "created_at", -1
-    ).to_list(200)
+    cid = current_user["id"]
+    query = {
+        "$or": [
+            {"citizen_id": cid},
+            {"citizen_id": ObjectId(cid)} if ObjectId.is_valid(cid) else {"citizen_id": cid}
+        ]
+    }
+    docs = await db.complaints.find(query).sort("created_at", -1).to_list(200)
     return [_to_out(d) for d in docs]
 
 
@@ -336,7 +343,7 @@ async def list_complaints(
     unassigned_only: bool = False,
     sort_by: str = "newest",  # "newest", "priority", "oldest"
     limit: int = 2500,
-    current_user: dict = Depends(require_role("admin", "officer")),
+    current_user: dict = Depends(get_current_user),
 ):
     db = get_db()
     query: dict = {}
@@ -346,7 +353,13 @@ async def list_complaints(
         query["category"] = category
     if unassigned_only:
         query["assigned_to"] = None
-    if current_user["role"] == "officer":
+    if current_user["role"] == "citizen":
+        cid = current_user["id"]
+        query["$or"] = [
+            {"citizen_id": cid},
+            {"citizen_id": ObjectId(cid)} if ObjectId.is_valid(cid) else {"citizen_id": cid}
+        ]
+    elif current_user["role"] == "officer":
         # Officer sees department queue or cases assigned to them
         query["$or"] = [
             {"assigned_to": current_user.get("department")},
