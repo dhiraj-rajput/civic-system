@@ -154,35 +154,36 @@ async def score_complaint(
     category_score = CATEGORY_WEIGHT.get(doc.get("category", "other"), 0.3)
 
     radius_radians = CLUSTER_RADIUS_METERS / 6378100.0
-    coords = doc.get("location", {}).get("coordinates", [0.0, 0.0])
+    coords = (doc.get("location") or {}).get("coordinates") or [0.0, 0.0]
     
-    cluster_count = 1
+    cluster_count = 0
     if db is not None:
         try:
-            cluster_count = await db.complaints.count_documents(
-                {
-                    "category": doc["category"],
-                    "location": {
-                        "$geoWithin": {
-                            "$centerSphere": [coords, radius_radians]
-                        }
-                    },
-                }
-            )
+            cluster_query = {
+                "category": doc.get("category", "other"),
+                "location": {
+                    "$geoWithin": {
+                        "$centerSphere": [coords, radius_radians]
+                    }
+                },
+            }
+            if doc.get("_id"):
+                cluster_query["_id"] = {"$ne": doc["_id"]}
+            cluster_count = await db.complaints.count_documents(cluster_query)
         except Exception:
             try:
                 raw_cands = await db.complaints.find({"category": doc.get("category", "")}).to_list(100)
-                cluster_count = max(1, sum(
+                cluster_count = sum(
                     1 for c in raw_cands
-                    if _haversine_distance_m(
+                    if str(c.get("_id")) != str(doc.get("_id")) and _haversine_distance_m(
                         coords[1], coords[0],
-                        c.get("location", {}).get("coordinates", [0, 0])[1],
-                        c.get("location", {}).get("coordinates", [0, 0])[0]
+                        (c.get("location") or {}).get("coordinates", [0, 0])[1],
+                        (c.get("location") or {}).get("coordinates", [0, 0])[0]
                     ) <= CLUSTER_RADIUS_METERS
-                ))
+                )
             except Exception:
-                cluster_count = 1
-    cluster_score = min(cluster_count / 10.0, 1.0)
+                cluster_count = 0
+    cluster_score = min((cluster_count + 1) / 10.0, 1.0)
 
     raw = W_AGE * age_score + W_CATEGORY * category_score + W_CLUSTER * cluster_score
     score = raw * 100.0
@@ -342,7 +343,7 @@ async def check_and_escalate_complaint(db, doc: dict) -> Optional[dict]:
     current_score = doc.get("priority_score", 0.0)
 
     # Recompute priority with latest age & cluster count
-    ai_urgency = doc.get("ai_analysis", {}).get("urgency_level", "LOW")
+    ai_urgency = (doc.get("ai_analysis") or {}).get("urgency_level", "LOW")
     new_score, new_label, breakdown = await score_complaint(db, doc, urgency_level=ai_urgency)
 
     reason = None

@@ -1,6 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-let authToken = null;
+let authToken = typeof window !== "undefined" ? localStorage.getItem("civic_token") : null;
 
 export function setAuthToken(token) {
   authToken = token;
@@ -23,6 +23,17 @@ export async function apiFetch(path, options = {}) {
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    authToken = null;
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("civic_token");
+      const p = window.location.pathname;
+      if (p !== "/login" && p !== "/register" && p !== "/bootstrap-admin" && p !== "/") {
+        window.location.href = "/login";
+      }
+    }
+  }
 
   if (res.status === 204) return null;
 
@@ -48,5 +59,6 @@ export const api = {
   post: (path, json) => apiFetch(path, { method: "POST", body: json !== undefined ? JSON.stringify(json) : undefined }),
   patch: (path, json) => apiFetch(path, { method: "PATCH", body: json !== undefined ? JSON.stringify(json) : "{}" }),
   del: (path) => apiFetch(path, { method: "DELETE" }),
+  delete: (path) => apiFetch(path, { method: "DELETE" }),
   upload: (path, formData) => apiFetch(path, { method: "POST", body: formData }),
 };

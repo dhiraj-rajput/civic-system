@@ -3,6 +3,7 @@ import { CheckCircle2, RotateCcw, AlertCircle, ShieldCheck, Image as ImageIcon }
 import { api } from "@/api/client";
 import { useToast } from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
+import StarRating from "@/components/StarRating";
 
 export default function CitizenVerificationCard({
   complaint,
@@ -11,6 +12,7 @@ export default function CitizenVerificationCard({
   const { toast } = useToast();
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [rating, setRating] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Only render if complaint is Resolved and has not been verified yet
@@ -30,11 +32,12 @@ export default function CitizenVerificationCard({
     try {
       await api.post(`/complaints/${complaint.id}/verify`, {
         response,
+        rating: response === "yes" ? rating : null,
         feedback: response === "no" ? feedback.trim() : null,
       });
 
       if (response === "yes") {
-        toast.success("Thank you! Complaint marked as Closed.");
+        toast.success(`Thank you! Resolution confirmed with ${rating} stars.`);
       } else {
         toast.info("Complaint reopened and returned to the officer work queue.");
       }
@@ -93,9 +96,16 @@ export default function CitizenVerificationCard({
       )}
 
       {/* Verification Prompt */}
-      <div className="border-t border-brand/20 pt-4 space-y-3">
+      <div className="border-t border-brand/20 pt-4 space-y-4">
         <div className="text-sm font-semibold text-ink text-center">
           Is this issue actually fixed?
+        </div>
+
+        <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg bg-surface-input border border-border/60">
+          <span className="text-xs font-semibold text-ink-secondary">
+            Rate the quality of the municipal resolution:
+          </span>
+          <StarRating value={rating} onChange={setRating} size={24} />
         </div>
 
         {showFeedbackInput && (

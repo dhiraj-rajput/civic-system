@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Filter, CheckCircle, ChevronDown, AlertTriangle, Lightbulb, 
   Droplets, Trash2, MoreHorizontal, MapPin, CheckSquare, ChevronRight,
-  Clock, ShieldCheck
+  Clock, ShieldCheck, Navigation
 } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { useToast } from '../../components/ui/Toast.jsx';
@@ -128,9 +128,24 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/60 text-xs text-ink-muted">
-          <div className="flex items-center gap-1.5 truncate max-w-md">
-            <MapPin size={13} className="text-brand shrink-0" />
-            <span className="truncate">{complaint.address_text || 'New York, NY'}</span>
+          <div className="flex items-center gap-2 truncate max-w-md">
+            <div className="flex items-center gap-1.5 truncate">
+              <MapPin size={13} className="text-brand shrink-0" />
+              <span className="truncate">{complaint.address_text || 'New York, NY'}</span>
+            </div>
+            {complaint.location?.lat && complaint.location?.lng && (
+              <a
+                href={`https://maps.google.com/?q=${complaint.location.lat},${complaint.location.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 transition-colors shrink-0"
+                title="Open GPS Navigation in Google Maps"
+              >
+                <Navigation size={11} />
+                Navigate
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {complaint.agency && (

@@ -7,10 +7,12 @@ from datetime import datetime
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
+from pymongo import ReturnDocument
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.routers.departments import department_for_category
+from app.routers.notifications import create_notification
 from app.schemas.complaint import (
     AssignUpdate,
     CommentCreate,
@@ -34,14 +36,16 @@ router = APIRouter(prefix="/complaints", tags=["complaints"])
 
 
 def _to_out(doc: dict) -> ComplaintOut:
-    coords = doc["location"]["coordinates"]
+    coords = (doc.get("location") or {}).get("coordinates") or [0.0, 0.0]
+    lat = coords[1] if len(coords) > 1 else 0.0
+    lng = coords[0] if len(coords) > 0 else 0.0
     return ComplaintOut(
         id=str(doc["_id"]),
         complaint_id=doc["complaint_id"],
         citizen_id=doc["citizen_id"],
         category=doc["category"],
         description=doc["description"],
-        location={"lat": coords[1], "lng": coords[0]},
+        location={"lat": lat, "lng": lng},
         address_text=doc.get("address_text"),
         media_urls=doc.get("media_urls", []),
         status=doc["status"],
@@ -68,6 +72,14 @@ def _to_out(doc: dict) -> ComplaintOut:
         borough=doc.get("borough"),
         incident_zip=doc.get("incident_zip"),
         resolution_description=doc.get("resolution_description"),
+        street_name=doc.get("street_name"),
+        cross_street_1=doc.get("cross_street_1"),
+        cross_street_2=doc.get("cross_street_2"),
+        community_board=doc.get("community_board"),
+        landmark=doc.get("landmark"),
+        open_data_channel_type=doc.get("open_data_channel_type"),
+        location_type=doc.get("location_type"),
+        resolution_action_updated_date=doc.get("resolution_action_updated_date"),
         comments=doc.get("comments", []),
         history=doc.get("history", []),
     )
@@ -106,17 +118,28 @@ def _to_track(doc: dict) -> ComplaintTrack:
 
 
 async def _get_or_404(db, complaint_id: str) -> dict:
-    if not ObjectId.is_valid(complaint_id):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid complaint id")
-    doc = await db.complaints.find_one({"_id": ObjectId(complaint_id)})
+    """Finds complaint by MongoDB _id or human-readable complaint_id (CMP-XXXX-XXXX)."""
+    query = {"complaint_id": complaint_id}
+    if ObjectId.is_valid(complaint_id):
+        query = {"$or": [{"_id": ObjectId(complaint_id)}, {"complaint_id": complaint_id}]}
+    doc = await db.complaints.find_one(query)
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Complaint not found")
     return doc
 
 
 def _can_view(doc: dict, user: dict) -> bool:
-    if user["role"] in ("admin", "officer"):
+    if user["role"] == "admin":
         return True
+    if user["role"] == "officer":
+        dept = user.get("department")
+        return (
+            (dept and doc.get("assigned_to") == dept)
+            or (user.get("id") and doc.get("assigned_officer_id") == user["id"])
+            or doc.get("assigned_to") is None
+            or doc.get("citizen_id") == "citizen-nyc-seed"
+            or bool(doc.get("nyc311_unique_key"))
+        )
     if user["role"] == "citizen":
         return (
             doc["citizen_id"] == user["id"]
@@ -131,9 +154,11 @@ def _can_manage(doc: dict, user: dict) -> bool:
     if user["role"] == "admin":
         return True
     if user["role"] == "officer":
+        dept = user.get("department")
+        user_id = user.get("id")
         return (
-            doc.get("assigned_to") == user.get("department")
-            or doc.get("assigned_officer_id") == user["id"]
+            bool(dept and doc.get("assigned_to") == dept)
+            or bool(user_id and doc.get("assigned_officer_id") == user_id)
         )
     return False
 
@@ -149,8 +174,16 @@ async def create_complaint(
 ):
     db = get_db()
     now = datetime.utcnow()
-    count = await db.complaints.count_documents({})
-    complaint_code = f"CMP-{now.year}-{count + 1:04d}"
+    
+    # Atomic sequence generation to eliminate concurrency collisions
+    counter = await db.counters.find_one_and_update(
+        {"_id": f"complaints_{now.year}"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    seq = counter.get("seq", 1)
+    complaint_code = f"CMP-{now.year}-{seq:04d}"
 
     doc = {
         "complaint_id": complaint_code,
@@ -163,6 +196,12 @@ async def create_complaint(
         },
         "address_text": payload.address_text,
         "media_urls": payload.media_urls,
+        "borough": payload.borough,
+        "incident_zip": payload.incident_zip,
+        "complaint_type": payload.complaint_type,
+        "descriptor": payload.descriptor,
+        "agency": payload.agency,
+        "nyc311_unique_key": payload.nyc311_unique_key,
         "status": "New",
         "priority_score": 0.0,
         "priority_label": "Low",
@@ -203,10 +242,11 @@ async def create_complaint(
     }
     
     # Feature 2: Explainable Priority Calculation
+    duration_days = (ai_result.get("duration") or {}).get("days", 0)
     score_res = await score_complaint(
         db, doc, 
         urgency_level=ai_result["urgency_level"], 
-        duration_days=ai_result.get("duration", {}).get("days", 0)
+        duration_days=duration_days
     )
     if len(score_res) == 3:
         score, label, breakdown = score_res
@@ -225,15 +265,24 @@ async def create_complaint(
         "ai_analysis": doc["ai_analysis"]
     }
     
-    if is_dup:
+    push_history = []
+    if is_dup and group_id:
         update["duplicate_group_id"] = group_id
         history_entry = {
             "event": "status_changed",
             "detail": f"Flagged as likely duplicate of nearby {payload.category} cluster ({group_id})",
             "at": now,
         }
+        push_history.append(history_entry)
         doc["history"].append(history_entry)
-        await db.complaints.update_one({"_id": result.inserted_id}, {"$push": {"history": history_entry}})
+        # Tag the master candidate with duplicate_group_id if not already set
+        master_query = {"complaint_id": group_id, "duplicate_group_id": None}
+        if ObjectId.is_valid(group_id):
+            master_query = {
+                "$or": [{"complaint_id": group_id}, {"_id": ObjectId(group_id)}],
+                "duplicate_group_id": None,
+            }
+        await db.complaints.update_one(master_query, {"$set": {"duplicate_group_id": group_id}})
 
     if ai_result["category"] != payload.category and ai_result["confidence"] > 0.7:
         ai_history_entry = {
@@ -241,11 +290,29 @@ async def create_complaint(
             "detail": f"AI suggested category: {ai_result['category']} (confidence: {ai_result['confidence']*100:.1f}%)",
             "at": now,
         }
+        push_history.append(ai_history_entry)
         doc["history"].append(ai_history_entry)
-        await db.complaints.update_one({"_id": result.inserted_id}, {"$push": {"history": ai_history_entry}})
 
-    await db.complaints.update_one({"_id": result.inserted_id}, {"$set": update})
+    db_mutation = {"$set": update}
+    if push_history:
+        db_mutation["$push"] = {"history": {"$each": push_history}}
+
+    await db.complaints.update_one({"_id": result.inserted_id}, db_mutation)
     doc.update(update)
+
+    # Notify administrators of incoming complaint needing dispatch
+    try:
+        await create_notification(
+            db,
+            title="New Complaint Submitted",
+            message=f"Complaint {complaint_code} ({payload.category}) submitted by citizen. Needs department assignment.",
+            complaint_id=complaint_code,
+            role="admin",
+            notif_type="warning",
+        )
+    except Exception:
+        pass
+
     return _to_out(doc)
 
 
@@ -262,32 +329,36 @@ async def list_my_complaints(current_user: dict = Depends(require_role("citizen"
 async def list_complaints(
     status_filter: str | None = None,
     category: str | None = None,
+    unassigned_only: bool = False,
+    sort_by: str = "newest",  # "newest", "priority", "oldest"
+    limit: int = 2500,
     current_user: dict = Depends(require_role("admin", "officer")),
 ):
     db = get_db()
     query: dict = {}
-    if status_filter:
+    if status_filter and status_filter != "All":
         query["status"] = status_filter
-    if category:
+    if category and category != "All":
         query["category"] = category
+    if unassigned_only:
+        query["assigned_to"] = None
     if current_user["role"] == "officer":
         # Officer sees department queue or cases assigned to them
         query["$or"] = [
             {"assigned_to": current_user.get("department")},
             {"assigned_officer_id": current_user["id"]}
         ]
-    docs = await db.complaints.find(query).sort("priority_score", -1).to_list(200)
 
-    # Dynamic escalation check for active complaints in queue
-    escalated_docs = []
-    for d in docs:
-        if d.get("status") not in ("Resolved", "Closed"):
-            escalation = await check_and_escalate_complaint(db, d)
-            if escalation:
-                d.update(escalation)
-        escalated_docs.append(d)
+    # Flexible sorting: default to newest first so newly filed citizen complaints appear immediately
+    if sort_by == "priority":
+        sort_criteria = [("priority_score", -1), ("created_at", -1)]
+    elif sort_by == "oldest":
+        sort_criteria = [("created_at", 1)]
+    else:  # "newest"
+        sort_criteria = [("created_at", -1)]
 
-    return [_to_out(d) for d in escalated_docs]
+    docs = await db.complaints.find(query).sort(sort_criteria).to_list(limit)
+    return [_to_out(d) for d in docs]
 
 
 @router.get("/{complaint_id}", response_model=ComplaintOut)
@@ -353,6 +424,22 @@ async def resolve_complaint(
         {"_id": doc["_id"]},
         {"$set": update, "$push": {"history": history_entry}}
     )
+
+    # Notify citizen that complaint is resolved and ready for verification
+    try:
+        if doc.get("citizen_id"):
+            await create_notification(
+                db,
+                title="Complaint Resolved - Please Verify",
+                message=f"Complaint {doc['complaint_id']} has been resolved with evidence. Please review and rate the resolution.",
+                complaint_id=doc["complaint_id"],
+                user_id=doc["citizen_id"],
+                role="citizen",
+                notif_type="success",
+            )
+    except Exception:
+        pass
+
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)
 
@@ -376,6 +463,7 @@ async def verify_complaint(
     verification = {
         "verified_at": now,
         "response": payload.response,
+        "rating": payload.rating,
         "feedback": payload.feedback,
     }
 
@@ -404,8 +492,44 @@ async def verify_complaint(
 
     await db.complaints.update_one(
         {"_id": doc["_id"]},
-        {"$set": update, "$push": {"history": history_entry}}
+        {"$set": update, "$push": {"history": history_entry}},
     )
+
+    # Trigger notifications based on verification outcome
+    try:
+        if payload.response == "yes":
+            if doc.get("assigned_officer_id"):
+                stars_txt = f" with a {payload.rating}-star rating" if payload.rating else ""
+                await create_notification(
+                    db,
+                    title="Resolution Confirmed & Closed",
+                    message=f"Citizen confirmed resolution for {doc['complaint_id']}{stars_txt}. Case closed.",
+                    complaint_id=doc["complaint_id"],
+                    user_id=doc["assigned_officer_id"],
+                    role="officer",
+                    notif_type="success",
+                )
+        else:
+            if doc.get("assigned_officer_id"):
+                await create_notification(
+                    db,
+                    title="Resolution Disputed - Reopened",
+                    message=f"Citizen disputed {doc['complaint_id']}: '{payload.feedback or 'No comment'}'. Returned to your queue.",
+                    complaint_id=doc["complaint_id"],
+                    user_id=doc["assigned_officer_id"],
+                    role="officer",
+                    notif_type="alert",
+                )
+            await create_notification(
+                db,
+                title="Complaint Reopened",
+                message=f"Citizen disputed resolution on {doc['complaint_id']}. Returned to active queue.",
+                complaint_id=doc["complaint_id"],
+                role="admin",
+                notif_type="warning",
+            )
+    except Exception:
+        pass
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)
 
@@ -421,10 +545,18 @@ async def update_status(
     if not _can_manage(doc, current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to update this complaint")
 
+    if payload.status == "Resolved":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "To mark a complaint as Resolved, please submit resolution evidence via POST /complaints/{id}/resolve",
+        )
+
     now = datetime.utcnow()
     old_status = doc["status"]
     update: dict = {"status": payload.status, "updated_at": now}
-    if payload.status in ("Resolved", "Closed") and not doc.get("resolved_at"):
+    if payload.status in ("In Progress", "Reopened"):
+        update["resolved_at"] = None
+    elif payload.status == "Closed" and not doc.get("resolved_at"):
         update["resolved_at"] = now
 
     history_entry = {
@@ -467,12 +599,15 @@ async def assign_complaint(
     officer_id = payload.officer_id if payload and payload.officer_id else None
     officer_name = payload.officer_name if payload and payload.officer_name else None
 
-    # If specific officer is provided, resolve department from officer record
-    if officer_id and ObjectId.is_valid(officer_id):
-        officer_doc = await db.users.find_one({"_id": ObjectId(officer_id)})
-        if officer_doc:
-            officer_name = officer_doc.get("name", officer_name)
-            assigned_to = officer_doc.get("department") or assigned_to
+    # If specific officer is provided, validate existence and role
+    if officer_id:
+        if not ObjectId.is_valid(officer_id):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid officer ID")
+        officer_doc = await db.users.find_one({"_id": ObjectId(officer_id), "role": "officer"})
+        if not officer_doc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Officer not found or user is not an officer")
+        officer_name = officer_doc.get("name", officer_name)
+        assigned_to = officer_doc.get("department") or assigned_to
 
     # Fallback to category department auto-mapping
     auto_assigned = False
@@ -505,6 +640,33 @@ async def assign_complaint(
     await db.complaints.update_one(
         {"_id": doc["_id"]}, {"$set": update, "$push": {"history": history_entry}}
     )
+
+    try:
+        # Notify assigned officer if individual assignment was made
+        if officer_id:
+            await create_notification(
+                db,
+                title="New Case Assigned",
+                message=f"You have been assigned to case {doc['complaint_id']} ({doc['category']}).",
+                complaint_id=doc["complaint_id"],
+                user_id=officer_id,
+                role="officer",
+                notif_type="warning",
+            )
+        # Notify citizen of department/officer dispatch
+        if doc.get("citizen_id"):
+            await create_notification(
+                db,
+                title="Complaint Assigned",
+                message=f"Your complaint {doc['complaint_id']} has been assigned to {assigned_to}.",
+                complaint_id=doc["complaint_id"],
+                user_id=doc["citizen_id"],
+                role="citizen",
+                notif_type="info",
+            )
+    except Exception:
+        pass
+
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)
 
@@ -548,7 +710,11 @@ async def add_comment(
         "at": now,
     }
     await db.complaints.update_one(
-        {"_id": doc["_id"]}, {"$push": {"comments": comment, "history": history_entry}}
+        {"_id": doc["_id"]},
+        {
+            "$set": {"updated_at": now},
+            "$push": {"comments": comment, "history": history_entry}
+        }
     )
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)

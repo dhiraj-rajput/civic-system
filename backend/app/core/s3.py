@@ -28,9 +28,28 @@ def get_s3_client():
         return None
 
 
+SAFE_MIME_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+    "video/x-matroska": ".mkv",
+}
+
+
 def upload_media_file(file_bytes: bytes, original_filename: str, content_type: str) -> str:
     """Uploads a file to Garage S3. Falls back seamlessly to local storage if S3 is unavailable."""
-    ext = os.path.splitext(original_filename)[1].lower()
+    # Enforce safe whitelisted extension based on content_type, preventing MIME spoofing / Stored XSS
+    safe_default_ext = SAFE_MIME_EXTENSIONS.get(content_type, ".bin")
+    raw_ext = os.path.splitext(original_filename)[1].lower()
+    
+    # Only keep user extension if it matches allowed extensions, otherwise use safe default
+    allowed_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".mov", ".mkv"}
+    ext = raw_ext if raw_ext in allowed_exts else safe_default_ext
     unique_name = f"{uuid.uuid4().hex}{ext}"
     
     client = get_s3_client()

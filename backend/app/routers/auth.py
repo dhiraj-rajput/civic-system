@@ -6,15 +6,17 @@ the app depend on those instead of re-decoding tokens."""
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, require_role
 from app.core.security import create_access_token, hash_password, verify_password
-from app.schemas.user import AdminBootstrap, LoginRequest, Token, UserCreate, UserOut
+from app.schemas.user import AdminBootstrap, LoginRequest, OfficerCreate, Token, UserCreate, UserOut
+from pymongo.errors import DuplicateKeyError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=Token)
 async def register(payload: UserCreate):
+    """Public registration is restricted strictly to citizens."""
     db = get_db()
     if await db.users.find_one({"email": payload.email}):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
@@ -22,19 +24,50 @@ async def register(payload: UserCreate):
         "name": payload.name,
         "email": payload.email,
         "password_hash": hash_password(payload.password),
-        "role": payload.role,
+        "role": "citizen",
+        "department": None,
+    }
+    try:
+        result = await db.users.insert_one(user)
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
+    token = create_access_token({"sub": str(result.inserted_id), "role": "citizen"})
+    return Token(access_token=token)
+
+
+@router.post("/create-officer", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def create_officer(
+    payload: OfficerCreate,
+    admin_user: dict = Depends(require_role("admin"))
+):
+    """Admin-only endpoint for provisioning departmental officers."""
+    db = get_db()
+    if await db.users.find_one({"email": payload.email}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
+    user = {
+        "name": payload.name,
+        "email": payload.email,
+        "password_hash": hash_password(payload.password),
+        "role": "officer",
         "department": payload.department,
     }
-    result = await db.users.insert_one(user)
-    token = create_access_token({"sub": str(result.inserted_id), "role": payload.role})
-    return Token(access_token=token)
+    try:
+        result = await db.users.insert_one(user)
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
+    return UserOut(
+        id=str(result.inserted_id),
+        name=payload.name,
+        email=payload.email,
+        role="officer",
+        department=payload.department,
+    )
 
 
 @router.post("/bootstrap-admin", response_model=Token)
 async def bootstrap_admin(payload: AdminBootstrap):
-    """Create the one admin account. Ported from ResolveAI's `create_admin`:
-    once any admin exists, this endpoint permanently 403s -- there is no
-    public route that mints additional admins."""
+    """Create the one admin account. Once any admin exists, this endpoint
+    permanently 403s -- there is no public route that mints additional admins."""
     db = get_db()
     if await db.users.find_one({"role": "admin"}):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "An admin account already exists")
@@ -47,7 +80,10 @@ async def bootstrap_admin(payload: AdminBootstrap):
         "role": "admin",
         "department": None,
     }
-    result = await db.users.insert_one(user)
+    try:
+        result = await db.users.insert_one(user)
+    except DuplicateKeyError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "An admin account already exists")
     token = create_access_token({"sub": str(result.inserted_id), "role": "admin"})
     return Token(access_token=token)
 

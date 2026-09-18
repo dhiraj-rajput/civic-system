@@ -24,8 +24,22 @@ CATEGORY_LABELS = {
     "other": "General / Other",
 }
 
+_http_client: Optional[httpx.AsyncClient] = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(6.0, connect=2.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        )
+    return _http_client
+
+
 def get_gemini_api_key() -> Optional[str]:
     return getattr(settings, "gemini_api_key", None) or os.environ.get("GEMINI_API_KEY")
+
 
 async def analyze_with_gemini(description: str) -> Dict[str, Any]:
     """Analyze a civic complaint using Gemini AI with automatic rule-based fallback."""
@@ -38,7 +52,7 @@ async def analyze_with_gemini(description: str) -> Dict[str, Any]:
         return result
 
     system_prompt = (
-        "You are an expert civic municipal AI assistant. Analyze the following citizen civic complaint description. "
+        "You are an expert civic municipal AI assistant. Analyze the citizen civic complaint text delimited below. "
         "Return ONLY a raw valid JSON object (no markdown, no code blocks) with the following structure:\n"
         "{\n"
         '  "category": "pothole" | "garbage" | "streetlight" | "water_supply" | "other",\n'
@@ -54,7 +68,7 @@ async def analyze_with_gemini(description: str) -> Dict[str, Any]:
         "contents": [
             {
                 "parts": [
-                    {"text": f"{system_prompt}\n\nComplaint description: {description}"}
+                    {"text": f"{system_prompt}\n\n<<<CITIZEN_COMPLAINT_TEXT>>>\n{description}\n<<<END_CITIZEN_COMPLAINT_TEXT>>>"}
                 ]
             }
         ],
@@ -66,42 +80,42 @@ async def analyze_with_gemini(description: str) -> Dict[str, Any]:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            response = await client.post(
-                f"{GEMINI_API_URL}?key={api_key.strip()}",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
+        client = get_http_client()
+        response = await client.post(
+            f"{GEMINI_API_URL}?key={api_key.strip()}",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            text_content = data["candidates"][0]["content"]["parts"][0]["text"]
+            parsed = json.loads(text_content)
             
-            if response.status_code == 200:
-                data = response.json()
-                text_content = data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(text_content)
+            cat = parsed.get("category", "other").lower()
+            if cat not in CATEGORY_LABELS:
+                cat = "other"
                 
-                cat = parsed.get("category", "other").lower()
-                if cat not in CATEGORY_LABELS:
-                    cat = "other"
-                    
-                urgency_lvl = parsed.get("urgency_level", "MEDIUM").upper()
-                if urgency_lvl not in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
-                    urgency_lvl = "MEDIUM"
+            urgency_lvl = parsed.get("urgency_level", "MEDIUM").upper()
+            if urgency_lvl not in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+                urgency_lvl = "MEDIUM"
 
-                return {
-                    "category": cat,
-                    "category_suggestion": CATEGORY_LABELS.get(cat, "General / Other"),
-                    "confidence": float(parsed.get("confidence", 0.95)),
-                    "urgency_level": urgency_lvl,
-                    "urgency_score": int(parsed.get("urgency_score", 50)),
-                    "urgency_signals": [],
-                    "duration": None,
-                    "location_hints": {"landmarks": [], "road_refs": []},
-                    "summary": parsed.get("summary", description[:80]),
-                    "matched_keywords": parsed.get("matched_keywords", []),
-                    "method": "gemini_flash",
-                    "engine": "gemini"
-                }
-            else:
-                logger.warning(f"Gemini API returned status {response.status_code}: {response.text}")
+            return {
+                "category": cat,
+                "category_suggestion": CATEGORY_LABELS.get(cat, "General / Other"),
+                "confidence": float(parsed.get("confidence", 0.95)),
+                "urgency_level": urgency_lvl,
+                "urgency_score": int(parsed.get("urgency_score", 50)),
+                "urgency_signals": [],
+                "duration": {"value": None, "unit": None, "days": 0},
+                "location_hints": {"landmarks": [], "road_refs": []},
+                "summary": parsed.get("summary", description[:80]),
+                "matched_keywords": parsed.get("matched_keywords", []),
+                "method": "gemini_flash",
+                "engine": "gemini"
+            }
+        else:
+            logger.warning(f"Gemini API returned status {response.status_code}: {response.text}")
     except Exception as exc:
         logger.warning(f"Gemini API call failed, falling back to rule-based engine: {exc}")
 

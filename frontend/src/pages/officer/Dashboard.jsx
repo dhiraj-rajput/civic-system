@@ -140,7 +140,7 @@ export default function OfficerDashboard() {
                     
                     <div className="flex items-center gap-4">
                       <div className="text-xs text-ink-muted">{formatRelativeTime(c.created_at)}</div>
-                      <Button as={Link} to={`/officer/complaints?id=${c.id}`} variant="outline" size="sm">
+                      <Button as={Link} to={`/officer/complaints/${c.id}`} variant="outline" size="sm">
                         View
                       </Button>
                     </div>
@@ -171,7 +171,7 @@ export default function OfficerDashboard() {
             ) : (
               <div className="space-y-1">
                 {slaWarnings.map(c => (
-                  <Link key={c.id} to="/officer/complaints" className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-hover group transition-colors">
+                  <Link key={c.id} to={`/officer/complaints/${c.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-hover group transition-colors">
                     <div>
                       <div className="font-mono text-sm text-ink font-medium">#{c.complaint_id || c.id.substring(0,8)}</div>
                       <div className="text-xs text-ink-secondary mt-0.5 capitalize">{c.category}</div>

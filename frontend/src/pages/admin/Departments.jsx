@@ -123,7 +123,7 @@ export default function Departments() {
   const handleDelete = async () => {
     if (!deletingDept) return;
     try {
-      await api.delete(`/departments/${deletingDept.id}`);
+      await api.del(`/departments/${deletingDept.id}`);
       toast.success(`Department "${deletingDept.name}" removed`);
       setDeleteConfirmOpen(false);
       setDeletingDept(null);
@@ -326,17 +326,7 @@ export default function Departments() {
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
-              <option value="custom">+ Custom Category / Special Division</option>
             </select>
-            {form.category === "custom" && (
-              <input 
-                type="text"
-                className="w-full mt-2 bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2 focus:outline-none focus:border-amber-400 text-sm text-[var(--text-primary)]"
-                placeholder="Type custom category name (e.g. parks_and_recreation)..."
-                value={form.customCategory}
-                onChange={(e) => setForm({...form, customCategory: e.target.value})}
-              />
-            )}
             <p className="text-[11px] text-[var(--text-muted)] mt-1">
               Complaints matching this category will be auto-suggested to this department during dispatch.
             </p>
@@ -344,7 +334,7 @@ export default function Departments() {
           
           <div className="space-y-1.5">
             <label className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider">
-              Department Scope & Responsibilities
+              Department Operations & Mandate
             </label>
             <textarea 
               className="w-full bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-amber-400 min-h-[90px] resize-y text-sm text-[var(--text-primary)]"
@@ -363,8 +353,8 @@ export default function Departments() {
         onConfirm={handleDelete}
         title="Remove Department?"
         message={`Are you sure you want to remove the "${deletingDept?.name}" department? Existing complaints will retain their historical assignment.`}
-        confirmText="Remove Department"
-        tone="red"
+        confirmLabel="Remove Department"
+        variant="danger"
       />
       
     </div>

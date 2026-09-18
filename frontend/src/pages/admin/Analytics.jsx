@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { BarChart3, Clock, AlertTriangle, RefreshCw, Map } from "lucide-react";
+import { BarChart3, Clock, AlertTriangle, RefreshCw, Map, Download } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import { useToast } from "../../components/ui/Toast.jsx";
@@ -21,6 +21,7 @@ export default function Analytics() {
   const [aging, setAging] = useState([]);
   
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   
   const [slaThreshold, setSlaThreshold] = useState("72");
@@ -78,6 +79,35 @@ export default function Analytics() {
     return `${diff} min ago`;
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem("civic_token");
+      const res = await fetch("/api/analytics/export?format=csv", {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      if (!res.ok) {
+        throw new Error("Failed to generate CSV export");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `civic_complaints_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Operational analytics report exported successfully");
+    } catch (err) {
+      toast.error(err.message || "Failed to export report");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-8 animate-in fade-in duration-300">
       
@@ -94,6 +124,16 @@ export default function Analytics() {
         </div>
         <div className="flex items-center gap-3 text-xs text-ink-muted">
           <span>Synced: {getRelativeTimeMinutes()}</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExport} 
+            isLoading={isExporting} 
+            className="flex items-center gap-1.5 border-brand/40 text-brand hover:bg-brand/10"
+            title="Download full operational records as CSV"
+          >
+            <Download size={13} /> Export Report (CSV)
+          </Button>
           <Button variant="outline" size="sm" onClick={loadData} isLoading={loading} className="flex items-center gap-1.5">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>

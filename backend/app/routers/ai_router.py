@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
+from app.core.deps import get_current_user
 from app.services.ai_extract import classify_complaint
 from app.services.gemini_service import analyze_with_gemini
 
@@ -16,11 +17,17 @@ class ClassifyResponse(BaseModel):
     matched_keywords: List[str]
 
 @router.post("/analyze")
-async def api_analyze_complaint(req: AnalyzeRequest) -> Dict[str, Any]:
+async def api_analyze_complaint(
+    req: AnalyzeRequest,
+    current_user: dict = Depends(get_current_user)
+) -> Dict[str, Any]:
     return await analyze_with_gemini(req.description)
 
 @router.post("/classify", response_model=ClassifyResponse)
-async def api_classify_complaint(req: AnalyzeRequest):
+async def api_classify_complaint(
+    req: AnalyzeRequest,
+    current_user: dict = Depends(get_current_user)
+):
     res = classify_complaint(req.description)
     return ClassifyResponse(
         category=res["category"],

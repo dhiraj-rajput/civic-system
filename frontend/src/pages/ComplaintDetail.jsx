@@ -21,7 +21,8 @@ import {
   FileText,
   Info,
   ChevronRight,
-  Share2
+  Share2,
+  Navigation
 } from "lucide-react";
 
 import { api } from "@/api/client";
@@ -36,6 +37,7 @@ import MediaGallery from "@/components/MediaGallery";
 import PriorityExplainer from "@/components/PriorityExplainer";
 import ComplaintMap from "@/components/ComplaintMap";
 import CitizenVerificationCard from "@/components/CitizenVerificationCard";
+import StarRating from "@/components/StarRating";
 import ResolutionEvidenceModal from "@/components/ResolutionEvidenceModal";
 import SmartAssignModal from "@/components/SmartAssignModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -413,6 +415,43 @@ export default function ComplaintDetail() {
             />
           )}
 
+          {/* Permanent Citizen Verification Record (Audit View) */}
+          {complaint.citizen_verification && (
+            <Panel className="p-5 border border-border bg-slate-50/50 dark:bg-[#151518] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs tracking-wider text-ink-muted uppercase">
+                  Citizen Verification Record
+                </span>
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                  complaint.citizen_verification.response === "yes" 
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" 
+                    : "bg-red-500/15 text-red-600 dark:text-red-400"
+                }`}>
+                  {complaint.citizen_verification.response === "yes" ? "Resolution Confirmed" : "Resolution Disputed"}
+                </span>
+              </div>
+              <p className="text-sm text-ink font-medium">
+                {complaint.citizen_verification.response === "yes" 
+                  ? "Citizen verified that the civic issue was successfully resolved." 
+                  : "Citizen reported that the issue remains unresolved or needs further action."}
+              </p>
+              {complaint.citizen_verification.rating && (
+                <div className="flex items-center gap-2 pt-1 pb-1">
+                  <span className="text-xs font-semibold text-ink-secondary">Citizen Satisfaction Rating:</span>
+                  <StarRating value={complaint.citizen_verification.rating} readOnly size={18} />
+                </div>
+              )}
+              {complaint.citizen_verification.feedback && (
+                <div className="bg-surface-input p-3 rounded-lg text-xs text-ink-muted border border-border">
+                  <span className="font-semibold text-ink">Citizen Feedback:</span> {complaint.citizen_verification.feedback}
+                </div>
+              )}
+              <div className="text-[11px] text-ink-muted">
+                Submitted on {new Date(complaint.citizen_verification.verified_at).toLocaleString()}
+              </div>
+            </Panel>
+          )}
+
           {/* COMPREHENSIVE NYC 311 AUTHENTIC DATA CARD */}
           {isNYC311 && (
             <Panel className="p-6 space-y-5 border border-border bg-slate-50/50 dark:bg-[#121214]">
@@ -541,14 +580,26 @@ export default function ComplaintDetail() {
           {/* Interactive Geospatial Map */}
           {hasCoordinates && (
             <Panel className="p-6 space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
                 <h3 className="text-base font-bold text-ink flex items-center gap-2">
                   <Compass size={18} className="text-amber-400" />
                   Incident GPS Location Pin
                 </h3>
-                <span className="font-mono text-xs text-ink-muted">
-                  {complaint.location.lat.toFixed(5)}, {complaint.location.lng.toFixed(5)}
-                </span>
+                <div className="flex items-center gap-2.5">
+                  <a
+                    href={`https://maps.google.com/?q=${complaint.location.lat},${complaint.location.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 transition-colors"
+                    title="Open Google Maps Navigation"
+                  >
+                    <Navigation size={13} />
+                    Navigate in Google Maps
+                  </a>
+                  <span className="font-mono text-xs text-ink-muted">
+                    {complaint.location.lat.toFixed(5)}, {complaint.location.lng.toFixed(5)}
+                  </span>
+                </div>
               </div>
 
               <div className="rounded-xl overflow-hidden border border-border">
@@ -728,8 +779,8 @@ export default function ComplaintDetail() {
           onConfirm={handleDelete}
           title="Delete Complaint"
           message={`Are you sure you want to permanently delete complaint #${complaint.complaint_id}? This action cannot be undone.`}
-          confirmText="Delete Complaint"
-          tone="red"
+          confirmLabel="Delete Complaint"
+          variant="danger"
         />
       )}
 

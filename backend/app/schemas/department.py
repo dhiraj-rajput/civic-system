@@ -20,4 +20,5 @@ class DepartmentCreate(BaseModel):
 
 class DepartmentUpdate(BaseModel):
     name: Optional[str] = None
+    category: Optional[Category] = None
     description: Optional[str] = None

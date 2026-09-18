@@ -107,7 +107,7 @@ export default function CitizenDashboard() {
             ) : recentComplaints.length > 0 ? (
               <div className="divide-y divide-border">
                 {recentComplaints.map((c) => (
-                  <Link key={c.id} to="/citizen/complaints" className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-surface-hover transition-colors gap-4">
+                  <Link key={c.id} to={`/citizen/complaints/${c.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-surface-hover transition-colors gap-4">
                     <div className="flex items-center gap-3">
                       <div className="font-mono text-sm text-ink bg-surface-muted px-2 py-1 rounded border border-border">
                         #{c.complaint_id || c.id.substring(0, 8)}

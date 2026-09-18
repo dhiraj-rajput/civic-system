@@ -219,7 +219,7 @@ def detect_urgency(description: str) -> dict:
     
     for level, rules in URGENCY_RULES.items():
         for kw, weight in rules["keywords"]:
-            if kw in desc_lower:
+            if re.search(r'\b' + re.escape(kw) + r'\b', desc_lower):
                 scores[level] += weight
                 signals[level].append(kw)
                 

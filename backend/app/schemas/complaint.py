@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 Category = Literal["pothole", "garbage", "streetlight", "water_supply", "other"]
 Status = Literal["New", "Assigned", "In Progress", "Resolved", "Closed", "Reopened"]
@@ -31,7 +31,7 @@ class StatusUpdate(BaseModel):
 
 
 class CommentCreate(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=2000)
 
 
 class CommentOut(BaseModel):
@@ -86,6 +86,7 @@ class ResolutionEvidence(BaseModel):
 class CitizenVerification(BaseModel):
     verified_at: datetime
     response: Literal["yes", "no"]
+    rating: Optional[int] = Field(None, ge=1, le=5)
     feedback: Optional[str] = None
 
 
@@ -98,6 +99,7 @@ class ResolutionSubmit(BaseModel):
 
 class VerificationSubmit(BaseModel):
     response: Literal["yes", "no"]
+    rating: Optional[int] = Field(None, ge=1, le=5)
     feedback: Optional[str] = None
 
 
@@ -135,6 +137,14 @@ class ComplaintOut(BaseModel):
     borough: Optional[str] = None
     incident_zip: Optional[str] = None
     resolution_description: Optional[str] = None
+    street_name: Optional[str] = None
+    cross_street_1: Optional[str] = None
+    cross_street_2: Optional[str] = None
+    community_board: Optional[str] = None
+    landmark: Optional[str] = None
+    open_data_channel_type: Optional[str] = None
+    location_type: Optional[str] = None
+    resolution_action_updated_date: Optional[str] = None
     comments: List[CommentOut] = []
     history: List[HistoryEntry] = []
 

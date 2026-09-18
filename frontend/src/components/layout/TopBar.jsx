@@ -1,5 +1,6 @@
 import { Menu, User, LogOut } from "lucide-react";
 import ThemeToggle from "../ui/ThemeToggle.jsx";
+import NotificationBell from "../NotificationBell.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -30,6 +31,7 @@ export default function TopBar({ onMenuClick }) {
         </button>
       </div>
       <div className="flex items-center gap-3">
+        <NotificationBell />
         <ThemeToggle />
         
         {user && (

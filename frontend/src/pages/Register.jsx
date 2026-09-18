@@ -26,7 +26,7 @@ export default function Register() {
 
   useEffect(() => {
     if (form.role === "officer") {
-      api.get("/departments/").then(setDepartments).catch(() => {});
+      api.get("/departments").then(setDepartments).catch(() => {});
     }
   }, [form.role]);
 
@@ -36,8 +36,8 @@ export default function Register() {
 
   function getPasswordStrength(pass) {
     if (!pass) return { score: 0, label: "", color: "bg-border" };
-    if (pass.length < 6) return { score: 1, label: "Weak", color: "bg-danger" };
-    if (pass.length < 10) return { score: 2, label: "Medium", color: "bg-warning" };
+    if (pass.length < 8) return { score: 1, label: "Weak (min 8 chars)", color: "bg-danger" };
+    if (pass.length < 12) return { score: 2, label: "Medium", color: "bg-warning" };
     return { score: 3, label: "Strong", color: "bg-success" };
   }
   const strength = getPasswordStrength(form.password);
@@ -46,22 +46,32 @@ export default function Register() {
     e.preventDefault();
     setError(null);
 
+    if (form.role === "officer") {
+      setError("Officer accounts are centrally provisioned by City Administration. Please sign in with your issued credentials or contact your administrator.");
+      return;
+    }
+
     if (!form.name.trim() || !form.email.trim() || !form.password) {
       setError("Please fill in all required fields.");
+      return;
+    }
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
     if (form.password !== form.confirm) {
       setError("Passwords don't match.");
       return;
     }
-    if (form.role === "officer" && !form.department.trim()) {
-      setError("Department is required for officer accounts.");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const me = await register(form);
+      const me = await register({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: "citizen"
+      });
       navigate(`/${me.role}`, { replace: true });
     } catch (err) {
       setError(err.detail || "Registration failed");
@@ -171,25 +181,18 @@ export default function Register() {
           </div>
 
           {form.role === "officer" && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              <h3 className="text-sm font-medium text-ink border-b border-border pb-2">Department details</h3>
-              <Field label="Department" hint="Must match a public department name.">
-                {departments.length > 0 ? (
-                  <Select value={form.department} onChange={update("department")}>
-                    <option value="">Select a department...</option>
-                    {departments.map((d) => (
-                      <option key={d.name} value={d.name}>{d.name}</option>
-                    ))}
-                  </Select>
-                ) : (
-                  <TextInput 
-                    value={form.department} 
-                    onChange={update("department")} 
-                    placeholder="e.g. Roads & Public Works" 
-                    leftIcon={Building2} 
-                  />
-                )}
-              </Field>
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4 space-y-2 text-sm animate-in fade-in slide-in-from-top-2">
+              <div className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                <Shield size={16} /> Department Officer Security Notice
+              </div>
+              <p className="text-ink-secondary text-xs leading-relaxed">
+                Department Officer accounts are provisioned exclusively by municipal administrators to preserve audit compliance and system security. If you are an assigned municipal officer, please sign in with your issued account credentials.
+              </p>
+              <div className="pt-1">
+                <Link to="/login" className="text-xs font-bold text-brand hover:underline">
+                  Go to Officer Sign In &rarr;
+                </Link>
+              </div>
             </div>
           )}
 

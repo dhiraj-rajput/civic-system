@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { RefreshCcw, LayoutDashboard, ListChecks, Building2, BarChart3, AlertCircle, Clock, CheckCircle, Flame, Layers } from "lucide-react";
+import { RefreshCcw, LayoutDashboard, ListChecks, Building2, BarChart3, AlertCircle, Clock, CheckCircle, Flame, Layers, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client.js";
 import { useToast } from "../../components/ui/Toast.jsx";
@@ -80,7 +80,7 @@ export default function Dashboard() {
       </div>
 
       {/* 2. KPI row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           label="Total Complaints" 
           value={summary?.total_complaints ?? "—"} 
@@ -93,11 +93,19 @@ export default function Dashboard() {
           tone="amber" 
           icon={AlertCircle}
         />
+        <Link to="/admin/complaints?filter=unassigned" className="block transition-transform hover:scale-[1.02]" title="Click to view unassigned complaints needing department dispatch">
+          <StatCard 
+            label="Unassigned (Action Required)" 
+            value={summary?.unassigned_count ?? "—"} 
+            tone="red" 
+            icon={ListChecks}
+          />
+        </Link>
         <StatCard 
-          label="Unassigned" 
-          value={summary?.unassigned_count ?? "—"} 
-          tone="red" 
-          icon={ListChecks}
+          label="Active Field Officers" 
+          value={summary?.active_officers_count ?? "0"} 
+          tone="blue" 
+          icon={Users}
         />
         <StatCard 
           label="SLA Compliance %" 
@@ -116,6 +124,12 @@ export default function Dashboard() {
           value={summary?.duplicate_count ?? "—"} 
           tone="gray" 
           icon={Layers}
+        />
+        <StatCard 
+          label="Active Agencies" 
+          value={summary?.active_departments_count ?? "—"} 
+          tone="purple" 
+          icon={Building2}
         />
       </div>
 

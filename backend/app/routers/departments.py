@@ -46,20 +46,37 @@ async def list_departments():
     return [_to_out(d) for d in docs]
 
 
+import re
+from pymongo.errors import DuplicateKeyError
+
+
 @router.post("", response_model=DepartmentOut, status_code=status.HTTP_201_CREATED)
 async def create_department(
     payload: DepartmentCreate, _admin: dict = Depends(require_role("admin"))
 ):
     db = get_db()
+    clean_name = payload.name.strip()
+    escaped_name = re.escape(clean_name)
     # Check if department with exact same name already exists
-    if await db.departments.find_one({"name": {"$regex": f"^{payload.name.strip()}$", "$options": "i"}}):
+    if await db.departments.find_one({"name": {"$regex": f"^{escaped_name}$", "$options": "i"}}):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            f"A department named '{payload.name}' already exists.",
+            f"A department named '{clean_name}' already exists.",
+        )
+    if await db.departments.find_one({"category": payload.category}):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"A department for category '{payload.category}' already exists.",
         )
     doc = payload.model_dump()
-    doc["name"] = doc["name"].strip()
-    result = await db.departments.insert_one(doc)
+    doc["name"] = clean_name
+    try:
+        result = await db.departments.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"A department with category '{payload.category}' already exists.",
+        )
     doc["_id"] = result.inserted_id
     return _to_out(doc)
 
@@ -77,7 +94,10 @@ async def update_department(
     if "name" in updates:
         updates["name"] = updates["name"].strip()
     if updates:
-        await db.departments.update_one({"_id": ObjectId(department_id)}, {"$set": updates})
+        try:
+            await db.departments.update_one({"_id": ObjectId(department_id)}, {"$set": updates})
+        except DuplicateKeyError:
+            raise HTTPException(status.HTTP_409_CONFLICT, "A department with this category already exists.")
     doc = await db.departments.find_one({"_id": ObjectId(department_id)})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Department not found")

@@ -1,48 +1,36 @@
 from typing import Literal, Optional
-
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, Field
 
 Role = Literal["citizen", "officer", "admin"]
-# Public /auth/register may only create these two -- "admin" is deliberately
-# excluded here (the original scaffold let anyone self-register as admin).
-# Ported from ResolveAI's `create_admin`, which only ever allows exactly one
-# admin account to exist and blocks the endpoint once it does; see
-# /auth/bootstrap-admin in routers/auth.py.
-RegisterRole = Literal["citizen", "officer"]
+# Public /auth/register may only create citizens. Officers are provisioned
+# by administrators via /auth/create-officer.
+RegisterRole = Literal["citizen"]
 
 
 class UserCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, max_length=72)
     role: RegisterRole = "citizen"
-    # Required when role == "officer" -- ported from ResolveAI's department
-    # officer accounts, simplified into this project's single-role user
-    # model instead of a separate officer collection/login flow.
     department: Optional[str] = None
 
-    @model_validator(mode="after")
-    def _officer_requires_department(self):
-        if self.role == "officer" and not self.department:
-            raise ValueError("department is required when role is 'officer'")
-        if self.role != "officer" and self.department:
-            raise ValueError("department may only be set for role 'officer'")
-        return self
+
+class OfficerCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=72)
+    department: str = Field(..., min_length=2, max_length=100)
 
 
 class AdminBootstrap(BaseModel):
-    """Creates the one and only admin account. Only works while no admin
-    exists yet -- ported from ResolveAI's `create_admin` single-admin
-    invariant."""
-
-    name: str
+    name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, max_length=72)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=1, max_length=72)
 
 
 class UserOut(BaseModel):

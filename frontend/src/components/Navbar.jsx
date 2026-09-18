@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import Button from "./ui/Button.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import NotificationBell from "./NotificationBell.jsx";
 
 import CivicLogo from "./CivicLogo.jsx";
 
@@ -56,7 +57,8 @@ export default function Navbar() {
           ))}
           {user ? (
             <>
-              <span className="font-ref ml-2 rounded border border-line bg-paper px-2.5 py-1 text-xs text-ink-soft">
+              <NotificationBell />
+              <span className="font-ref ml-1 rounded border border-line bg-paper px-2.5 py-1 text-xs text-ink-soft">
                 {user.name} · {user.role}
                 {user.department ? ` · ${user.department}` : ""}
               </span>

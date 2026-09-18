@@ -60,19 +60,31 @@ async def get_smart_officer_recommendation(
             "candidates": []
         }
 
-    comp_coords = complaint_doc.get("location", {}).get("coordinates", [-74.0060, 40.7128])
-    comp_lng, comp_lat = comp_coords[0], comp_coords[1]
+    comp_coords = (complaint_doc.get("location") or {}).get("coordinates") or [-74.0060, 40.7128]
+    comp_lng = comp_coords[0] if len(comp_coords) > 0 else -74.0060
+    comp_lat = comp_coords[1] if len(comp_coords) > 1 else 40.7128
+
+    # Batch workload counting across all officers in 1 single aggregation query (eliminates N+1)
+    officer_ids = [str(o["_id"]) for o in officers]
+    workload_pipeline = [
+        {
+            "$match": {
+                "assigned_officer_id": {"$in": officer_ids},
+                "status": {"$in": ["Assigned", "In Progress", "Reopened"]}
+            }
+        },
+        {"$group": {"_id": "$assigned_officer_id", "count": {"$sum": 1}}}
+    ]
+    workload_counts = await db.complaints.aggregate(workload_pipeline).to_list(None)
+    workload_map = {item["_id"]: item["count"] for item in workload_counts if item["_id"]}
 
     candidates = []
     for officer in officers:
         officer_id = str(officer["_id"])
         officer_name = officer.get("name", "Officer")
 
-        # 1. Workload: open complaints assigned to this specific officer
-        open_workload = await db.complaints.count_documents({
-            "assigned_officer_id": officer_id,
-            "status": {"$in": ["Assigned", "In Progress", "Reopened"]}
-        })
+        # 1. Workload from pre-aggregated batch map
+        open_workload = workload_map.get(officer_id, 0)
 
         # 2. Availability
         is_available = officer.get("is_available", True)

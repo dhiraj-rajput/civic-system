@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { ListChecks, Trash2, UserPlus, X, RefreshCw, Sparkles, ChevronRight } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ListChecks, Trash2, UserPlus, X, RefreshCw, Sparkles, ChevronRight, ArrowUpDown } from "lucide-react";
 
 import { api } from "../../api/client.js";
 import Button from "../../components/ui/Button.jsx";
@@ -18,6 +18,7 @@ import ComplaintMap from "../../components/ComplaintMap.jsx";
 
 export default function Complaints() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [complaints, setComplaints] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -27,10 +28,19 @@ export default function Complaints() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("newest"); // "newest", "priority", "oldest"
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
+
+  // Handle URL pre-filters like ?filter=unassigned
+  useEffect(() => {
+    if (searchParams.get("filter") === "unassigned") {
+      setShowUnassignedOnly(true);
+    }
+  }, [searchParams]);
 
   // UI State
   const [expandedRowId, setExpandedRowId] = useState(null);
@@ -48,7 +58,7 @@ export default function Complaints() {
     setLoading(true);
     try {
       const [compData, deptData] = await Promise.all([
-        api.get("/complaints"),
+        api.get("/complaints?limit=2500&sort_by=newest"),
         api.get("/departments").catch(() => [])
       ]);
       setComplaints(compData);
@@ -68,20 +78,39 @@ export default function Complaints() {
     setSearch("");
     setStatusFilter("All");
     setCategoryFilter("All");
+    setShowUnassignedOnly(false);
+    setSortBy("newest");
     setCurrentPage(1);
   };
 
-  // Client-side filtering
+  // Count unassigned
+  const unassignedCount = useMemo(() => {
+    return complaints.filter((c) => !c.assigned_to).length;
+  }, [complaints]);
+
+  // Client-side filtering & sorting
   const filteredComplaints = useMemo(() => {
-    return complaints.filter((c) => {
+    let list = complaints.filter((c) => {
       const matchSearch = !search || 
         c.complaint_id.toLowerCase().includes(search.toLowerCase()) || 
-        (c.description && c.description.toLowerCase().includes(search.toLowerCase()));
+        (c.description && c.description.toLowerCase().includes(search.toLowerCase())) ||
+        (c.assigned_to && c.assigned_to.toLowerCase().includes(search.toLowerCase()));
       const matchStatus = statusFilter === "All" || c.status === statusFilter;
       const matchCategory = categoryFilter === "All" || c.category === categoryFilter;
-      return matchSearch && matchStatus && matchCategory;
+      const matchUnassigned = !showUnassignedOnly || !c.assigned_to;
+      return matchSearch && matchStatus && matchCategory && matchUnassigned;
     });
-  }, [complaints, search, statusFilter, categoryFilter]);
+
+    if (sortBy === "priority") {
+      list.sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
+    } else if (sortBy === "oldest") {
+      list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else {
+      list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    return list;
+  }, [complaints, search, statusFilter, categoryFilter, showUnassignedOnly, sortBy]);
 
   // Client-side pagination
   const paginatedComplaints = useMemo(() => {
@@ -195,9 +224,37 @@ export default function Complaints() {
             <option value="All">All Categories</option>
             {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
+
+          {/* Quick Unassigned / Needs Assignment Toggle */}
+          <button
+            type="button"
+            onClick={() => { setShowUnassignedOnly(!showUnassignedOnly); setCurrentPage(1); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border transition-all ${
+              showUnassignedOnly
+                ? "bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-400 shadow-sm ring-1 ring-red-500/30"
+                : "bg-[var(--surface-input)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-red-400"
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${showUnassignedOnly ? "bg-red-500 animate-pulse" : "bg-red-400"}`}></span>
+            Needs Assignment ({unassignedCount})
+          </button>
+
+          {/* Sort By Select */}
+          <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+            <ArrowUpDown size={14} className="text-[var(--text-muted)]" />
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+              className="bg-[var(--surface-input)] border border-[var(--border-default)] rounded-md px-2.5 py-2 text-xs focus:outline-none focus:border-[var(--border-focus)] transition-colors cursor-pointer"
+            >
+              <option value="newest">Newest First</option>
+              <option value="priority">Highest Priority</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
         </div>
         
-        {(search || statusFilter !== "All" || categoryFilter !== "All") && (
+        {(search || statusFilter !== "All" || categoryFilter !== "All" || showUnassignedOnly || sortBy !== "newest") && (
           <Button variant="ghost" size="sm" onClick={handleClearFilters} className="text-[var(--text-muted)]">
             <X size={16} /> Clear filters
           </Button>

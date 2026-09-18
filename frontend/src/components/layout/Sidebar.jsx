@@ -57,7 +57,10 @@ export default function Sidebar({ collapsed, onToggle }) {
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1 px-2">
           {navItems.map((item) => {
-            const isActive = currentPath === item.to || currentPath.startsWith(item.to + '/');
+            const isRoot = ['/citizen', '/officer', '/admin'].includes(item.to);
+            const isActive = isRoot
+              ? (currentPath === item.to || currentPath === item.to + '/')
+              : (currentPath === item.to || currentPath.startsWith(item.to + '/'));
             return (
               <Link
                 key={item.to}

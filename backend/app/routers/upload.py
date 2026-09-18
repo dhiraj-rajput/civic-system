@@ -1,5 +1,6 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile, status, Depends
 from typing import List
+import anyio
 from app.core.s3 import upload_media_file
 from app.core.deps import get_current_user
 
@@ -9,6 +10,24 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/jpg", "im
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-matroska"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024       # 5 MB
 MAX_VIDEO_SIZE = 25 * 1024 * 1024     # 25 MB
+
+
+async def _read_file_safely(file: UploadFile, max_size: int) -> bytes:
+    chunk_size = 64 * 1024
+    total_bytes = 0
+    chunks = []
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum permitted size of {max_size / (1024 * 1024):.1f}MB"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -26,22 +45,14 @@ async def upload_file(
             detail=f"Unsupported file type: {content_type}. Only images (JPEG, PNG, WebP) and videos (MP4, WebM) are permitted."
         )
 
-    file_bytes = await file.read()
+    max_size = MAX_IMAGE_SIZE if is_image else MAX_VIDEO_SIZE
+    file_bytes = await _read_file_safely(file, max_size)
     size = len(file_bytes)
 
-    if is_image and size > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Image size exceeds 5MB limit ({size / (1024 * 1024):.1f}MB)"
-        )
-
-    if is_video and size > MAX_VIDEO_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Video size exceeds 25MB limit ({size / (1024 * 1024):.1f}MB)"
-        )
-
-    url = upload_media_file(file_bytes, file.filename or "upload.bin", content_type)
+    # Offload blocking boto3 / disk I/O to a worker thread
+    url = await anyio.to_thread.run_sync(
+        upload_media_file, file_bytes, file.filename or "upload.bin", content_type
+    )
 
     return {
         "url": url,
@@ -64,15 +75,22 @@ async def upload_files(
         is_video = content_type in ALLOWED_VIDEO_TYPES
         if not (is_image or is_video):
             continue
-        file_bytes = await file.read()
+
+        max_size = MAX_IMAGE_SIZE if is_image else MAX_VIDEO_SIZE
+        try:
+            file_bytes = await _read_file_safely(file, max_size)
+        except HTTPException:
+            continue
+
         size = len(file_bytes)
-        if (is_image and size <= MAX_IMAGE_SIZE) or (is_video and size <= MAX_VIDEO_SIZE):
-            url = upload_media_file(file_bytes, file.filename or "upload.bin", content_type)
-            results.append({
-                "url": url,
-                "filename": file.filename,
-                "content_type": content_type,
-                "size": size,
-                "media_type": "video" if is_video else "image"
-            })
+        url = await anyio.to_thread.run_sync(
+            upload_media_file, file_bytes, file.filename or "upload.bin", content_type
+        )
+        results.append({
+            "url": url,
+            "filename": file.filename,
+            "content_type": content_type,
+            "size": size,
+            "media_type": "video" if is_video else "image"
+        })
     return results
