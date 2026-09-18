@@ -2,6 +2,11 @@ FROM python:3.14.7-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.13 /uv /uvx /bin/
 
+# Create app user and /app directory upfront when /app is empty (takes 0.01s)
+RUN useradd -m -u 1000 app && \
+    mkdir -p /app/uploads && \
+    chown -R app:app /app
+
 WORKDIR /app
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -9,16 +14,16 @@ ENV UV_COMPILE_BYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
-COPY requirements.txt ./
+COPY --chown=app:app requirements.txt ./
 
-RUN --mount=type=cache,target=/root/.cache/uv \
+# Install venv as app user directly - avoids chown -R over thousands of packages
+USER app
+
+RUN --mount=type=cache,target=/home/app/.cache/uv,uid=1000,gid=1000 \
     uv venv && \
     uv pip install -r requirements.txt
 
-COPY . .
-
-RUN useradd -m app && mkdir -p /app/uploads && chown -R app:app /app
-USER app
+COPY --chown=app:app . .
 
 EXPOSE 8000
 

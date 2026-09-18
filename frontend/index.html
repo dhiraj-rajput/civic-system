@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <script>
-      (function(){var t=localStorage.getItem('civic_theme');if(t==='dark')document.documentElement.classList.add('dark');})()
+      (function(){var t=localStorage.getItem('civic_theme');if(t==='dark')document.documentElement.classList.add('dark');})();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var r of registrations) { r.unregister(); }
+        });
+      }
     </script>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

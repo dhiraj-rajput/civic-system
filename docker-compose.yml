@@ -55,21 +55,10 @@ services:
       dockerfile: Dockerfile
     container_name: civic-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - frontend_bun_modules:/app/node_modules
-    command:
-      - bun
-      - run
-      - dev
-      - --host
-      - 0.0.0.0
 
   garage:
     image: dxflrs/garage:v2.3.0
@@ -86,6 +75,5 @@ services:
 volumes:
   mongo_data:
   backend_venv:
-  frontend_bun_modules:
   garage_meta:
   garage_data:
