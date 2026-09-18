@@ -180,14 +180,29 @@ export default function ComplaintMap({
 
         if (bounds.length > 0) {
           map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
+        } else if (lat && lng) {
+          map.setView([lat, lng], zoom || 12);
         }
       }
 
       setIsReady(true);
     });
 
+    let resizeObserver = null;
+    if (mapContainerRef.current && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
       isMounted = false;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -195,12 +210,16 @@ export default function ComplaintMap({
     };
   }, [mode, complaints]);
 
-  // Update marker position when lat/lng props change in picker mode
+  // Update marker position or map view when lat/lng/zoom props change
   useEffect(() => {
-    if (mode === "picker" && markerRef.current && mapInstanceRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
+    if (mapInstanceRef.current && lat != null && lng != null) {
+      if (mode === "picker" && markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else if (mode === "multi") {
+        mapInstanceRef.current.setView([lat, lng], zoom || 12);
+      }
     }
-  }, [lat, lng, mode]);
+  }, [lat, lng, zoom, mode]);
 
   return (
     <div className={`relative overflow-hidden rounded-xl border border-border bg-card shadow-sm ${className}`}>

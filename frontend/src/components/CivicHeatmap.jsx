@@ -14,6 +14,23 @@ const DATE_RANGES = [
   { label: "Past 30 Days", value: 30 },
 ];
 
+const BOROUGHS = [
+  "All Boroughs",
+  "Manhattan",
+  "Brooklyn",
+  "Queens",
+  "Bronx",
+  "Staten Island",
+];
+
+const BOROUGH_COORDINATES = {
+  Manhattan: [40.7831, -73.9712],
+  Brooklyn: [40.6782, -73.9442],
+  Queens: [40.7282, -73.7949],
+  Bronx: [40.8448, -73.8648],
+  "Staten Island": [40.5795, -74.1502],
+};
+
 export default function CivicHeatmap() {
   const { toast } = useToast();
   const [points, setPoints] = useState([]);
@@ -23,11 +40,27 @@ export default function CivicHeatmap() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPriority, setSelectedPriority] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedBorough, setSelectedBorough] = useState("All Boroughs");
   const [selectedDays, setSelectedDays] = useState(null);
   const [recurringOnly, setRecurringOnly] = useState(false);
 
+  // Map center and zoom
+  const [mapCenter, setMapCenter] = useState([40.7128, -74.0060]);
+  const [mapZoom, setMapZoom] = useState(11);
+
   // Selected drilldown item
   const [selectedPin, setSelectedPin] = useState(null);
+
+  const handleBoroughChange = (borough) => {
+    setSelectedBorough(borough);
+    if (borough !== "All" && borough !== "All Boroughs" && BOROUGH_COORDINATES[borough]) {
+      setMapCenter(BOROUGH_COORDINATES[borough]);
+      setMapZoom(13);
+    } else {
+      setMapCenter([40.7128, -74.0060]);
+      setMapZoom(11);
+    }
+  };
 
   const fetchHeatmapData = async () => {
     setLoading(true);
@@ -36,6 +69,9 @@ export default function CivicHeatmap() {
       if (selectedCategory !== "All") params.append("category", selectedCategory);
       if (selectedPriority !== "All") params.append("priority", selectedPriority);
       if (selectedStatus !== "All") params.append("status", selectedStatus);
+      if (selectedBorough && selectedBorough !== "All" && selectedBorough !== "All Boroughs") {
+        params.append("borough", selectedBorough);
+      }
       if (selectedDays) params.append("days", selectedDays);
       if (recurringOnly) params.append("recurring_only", "true");
 
@@ -50,7 +86,7 @@ export default function CivicHeatmap() {
 
   useEffect(() => {
     fetchHeatmapData();
-  }, [selectedCategory, selectedPriority, selectedStatus, selectedDays, recurringOnly]);
+  }, [selectedCategory, selectedPriority, selectedStatus, selectedBorough, selectedDays, recurringOnly]);
 
   const summaryStats = useMemo(() => {
     const total = points.length;
@@ -79,7 +115,7 @@ export default function CivicHeatmap() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
           {/* Category Filter */}
           <div className="space-y-1">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
@@ -136,6 +172,24 @@ export default function CivicHeatmap() {
             </select>
           </div>
 
+          {/* Borough Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+              Borough
+            </label>
+            <select
+              value={selectedBorough}
+              onChange={(e) => handleBoroughChange(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-input px-2.5 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+            >
+              {BOROUGHS.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Date Range */}
           <div className="space-y-1">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
@@ -166,7 +220,7 @@ export default function CivicHeatmap() {
               }`}
             >
               <AlertTriangle size={13} />
-              <span>Recurring Clusters Only</span>
+              <span>Recurring Clusters</span>
             </button>
           </div>
         </div>
@@ -191,12 +245,16 @@ export default function CivicHeatmap() {
       {/* Map + Side Drilldown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Interactive Map */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 h-[380px] sm:h-[480px] lg:h-[540px]">
           <ComplaintMap
             mode="multi"
+            lat={mapCenter[0]}
+            lng={mapCenter[1]}
+            zoom={mapZoom}
             complaints={points}
             onPinClick={(c) => setSelectedPin(c)}
-            style={{ height: "480px", width: "100%" }}
+            className="h-full w-full"
+            style={{ height: "100%", width: "100%" }}
           />
         </div>
 

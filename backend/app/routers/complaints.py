@@ -118,11 +118,14 @@ def _to_track(doc: dict) -> ComplaintTrack:
 
 
 async def _get_or_404(db, complaint_id: str) -> dict:
-    """Finds complaint by MongoDB _id or human-readable complaint_id (CMP-XXXX-XXXX)."""
-    query = {"complaint_id": complaint_id}
+    """Finds complaint by MongoDB _id, human-readable complaint_id (CMP-XXXX-XXXX), or nyc311_unique_key."""
+    conditions = [
+        {"complaint_id": complaint_id},
+        {"nyc311_unique_key": complaint_id},
+    ]
     if ObjectId.is_valid(complaint_id):
-        query = {"$or": [{"_id": ObjectId(complaint_id)}, {"complaint_id": complaint_id}]}
-    doc = await db.complaints.find_one(query)
+        conditions.append({"_id": ObjectId(complaint_id)})
+    doc = await db.complaints.find_one({"$or": conditions})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Complaint not found")
     return doc
@@ -361,6 +364,45 @@ async def list_complaints(
     return [_to_out(d) for d in docs]
 
 
+@router.get("/public-track/{tracking_id}")
+async def public_track_complaint(tracking_id: str):
+    """Public, unauthenticated tracking endpoint for citizens with complaint_id, MongoDB id, or NYC311 unique key."""
+    db = get_db()
+    clean_id = tracking_id.strip()
+    conditions = [
+        {"complaint_id": clean_id},
+        {"nyc311_unique_key": clean_id},
+    ]
+    if ObjectId.is_valid(clean_id):
+        conditions.append({"_id": ObjectId(clean_id)})
+    doc = await db.complaints.find_one({"$or": conditions})
+    if not doc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Complaint not found. Please verify your reference number.")
+
+    coords = (doc.get("location") or {}).get("coordinates") or [0.0, 0.0]
+    return {
+        "id": str(doc["_id"]),
+        "complaint_id": doc.get("complaint_id", clean_id),
+        "category": doc.get("category", "other"),
+        "status": doc.get("status", "New"),
+        "priority_label": doc.get("priority_label", "Medium"),
+        "priority_score": doc.get("priority_score", 0.0),
+        "borough": doc.get("borough"),
+        "address_text": doc.get("address_text", "New York, NY"),
+        "lat": coords[1] if len(coords) > 1 else 0.0,
+        "lng": coords[0] if len(coords) > 0 else 0.0,
+        "created_at": doc.get("created_at"),
+        "updated_at": doc.get("updated_at"),
+        "resolved_at": doc.get("resolved_at"),
+        "assigned_to": doc.get("assigned_to"),
+        "agency": doc.get("agency"),
+        "history": doc.get("history", []),
+        "media_urls": doc.get("media_urls", []),
+        "resolution_evidence": doc.get("resolution_evidence"),
+        "citizen_verification": doc.get("citizen_verification"),
+    }
+
+
 @router.get("/{complaint_id}", response_model=ComplaintOut)
 async def get_complaint(complaint_id: str, current_user: dict = Depends(get_current_user)):
     db = get_db()
@@ -567,6 +609,22 @@ async def update_status(
     await db.complaints.update_one(
         {"_id": doc["_id"]}, {"$set": update, "$push": {"history": history_entry}}
     )
+
+    # In-app notification for status progression
+    try:
+        if payload.status == "In Progress" and doc.get("citizen_id"):
+            await create_notification(
+                db,
+                title="Work In Progress",
+                message=f"Field work has begun on your complaint #{doc.get('complaint_id', complaint_id)}.",
+                complaint_id=doc.get("complaint_id", complaint_id),
+                user_id=doc["citizen_id"],
+                role="citizen",
+                notif_type="info",
+            )
+    except Exception:
+        pass
+
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)
 
@@ -716,6 +774,33 @@ async def add_comment(
             "$push": {"comments": comment, "history": history_entry}
         }
     )
+
+    # In-app notifications for comments
+    try:
+        if current_user["role"] in ["officer", "admin"] and doc.get("citizen_id"):
+            await create_notification(
+                db,
+                title=f"New comment on #{doc.get('complaint_id', complaint_id)}",
+                message=f"{current_user['name']} ({current_user['role'].title()}): {payload.text[:120]}",
+                complaint_id=doc.get("complaint_id", complaint_id),
+                user_id=doc["citizen_id"],
+                role="citizen",
+                notif_type="info",
+            )
+        elif current_user["role"] == "citizen":
+            # Alert officer or department
+            await create_notification(
+                db,
+                title=f"Citizen comment on #{doc.get('complaint_id', complaint_id)}",
+                message=f"{current_user['name']}: {payload.text[:120]}",
+                complaint_id=doc.get("complaint_id", complaint_id),
+                role="officer",
+                user_id=doc.get("assigned_officer_id"),
+                notif_type="info",
+            )
+    except Exception:
+        pass
+
     doc = await _get_or_404(db, complaint_id)
     return _to_out(doc)
 

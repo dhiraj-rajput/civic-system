@@ -27,7 +27,7 @@ export default function StarRating({
             className={`transition-all duration-150 ${
               readOnly
                 ? "cursor-default"
-                : "cursor-pointer hover:scale-110 focus:outline-none focus:ring-1 focus:ring-amber-400 rounded-sm"
+                : "cursor-pointer hover:scale-110 focus:outline-none focus:ring-1 focus:ring-amber-400 rounded-md min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-2 sm:p-1.5"
             }`}
             title={readOnly ? `${value} out of 5 stars` : `Rate ${star} star${star > 1 ? "s" : ""}`}
           >

@@ -71,12 +71,12 @@ export default function CitizenDashboard() {
           </h1>
           <p className="text-ink-secondary mt-1">{today}</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Button as={Link} to="/citizen/submit" variant="primary" className="flex-1 md:flex-none py-2.5">
-            <FilePlus size={18} /> Submit New Complaint
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+          <Button as={Link} to="/citizen/submit" variant="primary" className="py-2.5 flex items-center justify-center gap-1.5 shadow-sm">
+            <FilePlus size={16} /> Submit New Report
           </Button>
-          <Button as={Link} to="/citizen/complaints" variant="outline" className="flex-1 md:flex-none py-2.5">
-            <ListChecks size={18} /> View All
+          <Button as={Link} to="/citizen/complaints" variant="outline" className="py-2.5 flex items-center justify-center gap-1.5">
+            <ListChecks size={16} /> View My Reports
           </Button>
         </div>
       </div>

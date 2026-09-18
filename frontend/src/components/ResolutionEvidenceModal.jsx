@@ -73,7 +73,7 @@ export default function ResolutionEvidenceModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl space-y-6"
+        className="relative w-full max-w-lg rounded-xl border border-border bg-card p-5 sm:p-6 shadow-2xl space-y-5 sm:space-y-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border pb-4">

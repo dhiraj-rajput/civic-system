@@ -174,18 +174,18 @@ export default function ComplaintDetail() {
   const isNYC311 = Boolean(complaint.nyc311_unique_key);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 space-y-6 animate-in fade-in duration-300">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-in fade-in duration-300">
       
       {/* 1. Breadcrumb & Back Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link
             to={backLink}
-            className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary hover:text-ink px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-hover transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary hover:text-ink px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-[36px] rounded-lg border border-border bg-card hover:bg-hover transition-colors"
           >
             <ArrowLeft size={14} /> Back
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-sm font-bold text-ink bg-surface-muted px-2.5 py-1 rounded border border-border">
               #{complaint.complaint_id || complaint.id}
             </span>
@@ -203,24 +203,24 @@ export default function ComplaintDetail() {
         </div>
 
         {/* Action Controls for Admin & Officer */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {user?.role === "admin" && (
-            <>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsSmartAssignOpen(true)}
-                className="gap-1.5 text-xs"
+                className="gap-1.5 text-xs min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
               >
                 <Sparkles size={14} className="text-amber-400" /> Smart Assign
               </Button>
 
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-initial">
                 <select
                   value={complaint.assigned_to || ""}
                   onChange={(e) => handleReassign(e.target.value)}
                   disabled={isReassigning}
-                  className="bg-card border border-border text-xs font-medium text-ink rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] bg-card border border-border text-xs font-medium text-ink rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
                   <option value="">Auto Department</option>
                   {departments.map((d) => (
@@ -229,12 +229,12 @@ export default function ComplaintDetail() {
                 </select>
               </div>
 
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-initial">
                 <select
                   value={complaint.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   disabled={isUpdatingStatus}
-                  className="bg-card border border-border text-xs font-semibold text-ink rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] bg-card border border-border text-xs font-semibold text-ink rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -246,21 +246,21 @@ export default function ComplaintDetail() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] px-2 flex items-center justify-center"
                 title="Delete Complaint"
               >
                 <Trash2 size={16} />
               </Button>
-            </>
+            </div>
           )}
 
           {user?.role === "officer" && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <select
                 value={complaint.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 disabled={isUpdatingStatus}
-                className="bg-card border border-border text-xs font-semibold text-ink rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
+                className="bg-card border border-border text-xs font-semibold text-ink rounded-lg px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-[36px] focus:outline-none focus:border-amber-400 cursor-pointer w-full sm:w-auto"
               >
                 <option value="Assigned">Assigned</option>
                 <option value="In Progress">In Progress</option>
@@ -274,7 +274,7 @@ export default function ComplaintDetail() {
                   variant="primary"
                   size="sm"
                   onClick={() => setIsResolveModalOpen(true)}
-                  className="gap-1 text-xs font-semibold"
+                  className="gap-1.5 text-xs font-semibold min-h-[44px] sm:min-h-[36px] w-full sm:w-auto justify-center"
                 >
                   <ShieldCheck size={14} /> Resolve with Evidence
                 </Button>
@@ -285,15 +285,15 @@ export default function ComplaintDetail() {
       </div>
 
       {/* 2. Top Metric Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Panel className="p-4 flex flex-col">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Panel className="p-3.5 sm:p-4 flex flex-col justify-between">
           <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Status</span>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={complaint.status} />
           </div>
         </Panel>
 
-        <Panel className="p-4 flex flex-col">
+        <Panel className="p-3.5 sm:p-4 flex flex-col justify-between">
           <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Priority Score</span>
           <div className="mt-2 flex items-center gap-2">
             <span className="font-mono text-xl font-bold text-ink">{complaint.priority_score} / 100</span>
@@ -301,7 +301,7 @@ export default function ComplaintDetail() {
           </div>
         </Panel>
 
-        <Panel className="p-4 flex flex-col">
+        <Panel className="p-3.5 sm:p-4 flex flex-col justify-between">
           <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Department</span>
           <div className="mt-2 text-sm font-semibold text-ink truncate">
             {complaint.assigned_to || "Auto-routed"}
@@ -311,7 +311,7 @@ export default function ComplaintDetail() {
           )}
         </Panel>
 
-        <Panel className="p-4 flex flex-col">
+        <Panel className="p-3.5 sm:p-4 flex flex-col justify-between">
           <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Filed Date</span>
           <div className="mt-2 text-sm font-semibold text-ink">
             {new Date(complaint.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -384,22 +384,28 @@ export default function ComplaintDetail() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {complaint.resolution_evidence.before_image_url && (
-                  <div>
-                    <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Before Repair</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Before Repair</span>
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Initial State</span>
+                    </div>
                     <img
                       src={complaint.resolution_evidence.before_image_url}
-                      alt="Before"
-                      className="mt-1 h-44 w-full object-cover rounded-lg border border-border shadow-sm"
+                      alt="Before Repair"
+                      className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
                     />
                   </div>
                 )}
                 {complaint.resolution_evidence.after_image_url && (
-                  <div>
-                    <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide">After Repair</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">After Repair</span>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Resolution Proof</span>
+                    </div>
                     <img
                       src={complaint.resolution_evidence.after_image_url}
-                      alt="After"
-                      className="mt-1 h-44 w-full object-cover rounded-lg border border-border shadow-sm"
+                      alt="After Repair"
+                      className="h-48 sm:h-56 w-full object-cover rounded-lg border border-border shadow-sm"
                     />
                   </div>
                 )}
@@ -417,12 +423,12 @@ export default function ComplaintDetail() {
 
           {/* Permanent Citizen Verification Record (Audit View) */}
           {complaint.citizen_verification && (
-            <Panel className="p-5 border border-border bg-slate-50/50 dark:bg-[#151518] space-y-2.5">
-              <div className="flex items-center justify-between">
+            <Panel className="p-4 sm:p-5 border border-border bg-slate-50/50 dark:bg-[#151518] space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="font-semibold text-xs tracking-wider text-ink-muted uppercase">
                   Citizen Verification Record
                 </span>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                <span className={`text-xs px-2.5 py-1 rounded-full font-bold self-start sm:self-auto ${
                   complaint.citizen_verification.response === "yes" 
                     ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" 
                     : "bg-red-500/15 text-red-600 dark:text-red-400"
@@ -430,19 +436,19 @@ export default function ComplaintDetail() {
                   {complaint.citizen_verification.response === "yes" ? "Resolution Confirmed" : "Resolution Disputed"}
                 </span>
               </div>
-              <p className="text-sm text-ink font-medium">
+              <p className="text-xs sm:text-sm text-ink font-medium leading-relaxed">
                 {complaint.citizen_verification.response === "yes" 
                   ? "Citizen verified that the civic issue was successfully resolved." 
                   : "Citizen reported that the issue remains unresolved or needs further action."}
               </p>
               {complaint.citizen_verification.rating && (
-                <div className="flex items-center gap-2 pt-1 pb-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
                   <span className="text-xs font-semibold text-ink-secondary">Citizen Satisfaction Rating:</span>
                   <StarRating value={complaint.citizen_verification.rating} readOnly size={18} />
                 </div>
               )}
               {complaint.citizen_verification.feedback && (
-                <div className="bg-surface-input p-3 rounded-lg text-xs text-ink-muted border border-border">
+                <div className="bg-surface-input p-3 rounded-lg text-xs text-ink-muted border border-border break-words">
                   <span className="font-semibold text-ink">Citizen Feedback:</span> {complaint.citizen_verification.feedback}
                 </div>
               )}
@@ -481,79 +487,79 @@ export default function ComplaintDetail() {
 
               {/* Data Grid: Complete API Attributes */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs">
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Agency Code</span>
-                  <p className="font-bold text-ink">{complaint.agency || "N/A"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Agency Code</span>
+                  <p className="font-bold text-ink break-words">{complaint.agency || "N/A"}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Agency Full Name</span>
-                  <p className="font-bold text-ink truncate">{complaint.agency_name || complaint.assigned_to || "City Agency"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Agency Full Name</span>
+                  <p className="font-bold text-ink break-words">{complaint.agency_name || complaint.assigned_to || "City Agency"}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Complaint Type</span>
-                  <p className="font-semibold text-ink">{complaint.complaint_type || complaint.category}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Complaint Type</span>
+                  <p className="font-semibold text-ink break-words">{complaint.complaint_type || complaint.category}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Descriptor</span>
-                  <p className="font-semibold text-ink">{complaint.descriptor || "General inspection requirement"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Descriptor</span>
+                  <p className="font-semibold text-ink break-words">{complaint.descriptor || "General inspection requirement"}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Borough</span>
-                  <p className="font-bold text-ink">{complaint.borough || "New York"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Borough</span>
+                  <p className="font-bold text-ink break-words">{complaint.borough || "New York"}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Postal Zip Code</span>
-                  <p className="font-mono font-bold text-ink">{complaint.incident_zip || "N/A"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Postal Zip Code</span>
+                  <p className="font-mono font-bold text-ink break-words">{complaint.incident_zip || "N/A"}</p>
                 </div>
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Location Format</span>
-                  <p className="font-semibold text-ink">{complaint.location_type || "Street / Sidewalk"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Location Format</span>
+                  <p className="font-semibold text-ink break-words">{complaint.location_type || "Street / Sidewalk"}</p>
                 </div>
 
                 {complaint.street_name && (
-                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2">
-                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Street Name</span>
-                    <p className="font-semibold text-ink">{complaint.street_name}</p>
+                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 sm:col-span-2 min-w-0 overflow-hidden">
+                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Street Name</span>
+                    <p className="font-semibold text-ink break-words">{complaint.street_name}</p>
                   </div>
                 )}
 
                 {complaint.cross_street_1 && (
-                  <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Cross Street 1</span>
-                    <p className="font-semibold text-ink">{complaint.cross_street_1}</p>
+                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Cross Street 1</span>
+                    <p className="font-semibold text-ink break-words">{complaint.cross_street_1}</p>
                   </div>
                 )}
 
                 {complaint.cross_street_2 && (
-                  <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Cross Street 2</span>
-                    <p className="font-semibold text-ink">{complaint.cross_street_2}</p>
+                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Cross Street 2</span>
+                    <p className="font-semibold text-ink break-words">{complaint.cross_street_2}</p>
                   </div>
                 )}
 
                 {complaint.community_board && (
-                  <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Community Board</span>
-                    <p className="font-semibold text-ink">{complaint.community_board}</p>
+                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Community Board</span>
+                    <p className="font-semibold text-ink break-words">{complaint.community_board}</p>
                   </div>
                 )}
 
                 {complaint.landmark && (
-                  <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Landmark</span>
-                    <p className="font-semibold text-ink">{complaint.landmark}</p>
+                  <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                    <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Landmark</span>
+                    <p className="font-semibold text-ink break-words">{complaint.landmark}</p>
                   </div>
                 )}
 
-                <div className="bg-card p-3 rounded-lg border border-border space-y-1">
-                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider">Open Data Channel</span>
-                  <p className="font-semibold text-ink">{complaint.open_data_channel_type || "ONLINE / MOBILE"}</p>
+                <div className="bg-card p-3 rounded-lg border border-border space-y-1 min-w-0 overflow-hidden">
+                  <span className="text-ink-muted uppercase font-semibold text-[10px] tracking-wider block">Open Data Channel</span>
+                  <p className="font-semibold text-ink break-words">{complaint.open_data_channel_type || "ONLINE / MOBILE"}</p>
                 </div>
               </div>
 
@@ -690,17 +696,17 @@ export default function ComplaintDetail() {
           </Panel>
 
           {/* Audit History Timeline */}
-          <Panel className="p-5 space-y-3">
+          <Panel className="p-4 sm:p-5 space-y-3">
             <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider">
               Audit Trail & Timeline
             </h4>
-            <div className="max-h-72 overflow-y-auto pr-1">
+            <div className="max-h-80 overflow-y-auto pr-1 scroll-smooth">
               <HistoryTimeline history={complaint.history || []} />
             </div>
           </Panel>
 
           {/* Official Comments & Discussion */}
-          <Panel className="p-5 space-y-4">
+          <Panel className="p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-2">
               <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare size={14} className="text-amber-400" />
@@ -708,37 +714,44 @@ export default function ComplaintDetail() {
               </h4>
             </div>
 
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 scroll-smooth">
               {!complaint.comments || complaint.comments.length === 0 ? (
                 <p className="text-xs text-ink-muted text-center py-4">No comments posted yet.</p>
               ) : (
                 complaint.comments.map((c, i) => (
-                  <div key={i} className="text-xs bg-surface-muted/60 p-2.5 rounded-lg border border-border space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-ink capitalize">
+                  <div key={i} className="text-xs bg-surface-muted/60 p-2.5 sm:p-3 rounded-lg border border-border space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-ink capitalize truncate">
                         {c.author_name} <span className="font-normal text-ink-muted">({c.author_role})</span>
                       </span>
-                      <span className="text-[10px] text-ink-muted font-mono">
+                      <span className="text-[10px] text-ink-muted font-mono shrink-0">
                         {new Date(c.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-ink-secondary leading-relaxed">{c.text}</p>
+                    <p className="text-ink-secondary leading-relaxed break-words">{c.text}</p>
                   </div>
                 ))
               )}
             </div>
 
-            <form onSubmit={handleAddComment} className="pt-2 border-t border-border flex gap-2">
+            <form onSubmit={handleAddComment} className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Write a message or note..."
-                className="flex-1 bg-surface-input border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-amber-400"
+                placeholder="Write an official note or message..."
+                className="flex-1 min-h-[44px] sm:min-h-[36px] bg-surface-input border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-amber-400 w-full"
                 disabled={isSubmittingComment}
               />
-              <Button type="submit" variant="primary" size="sm" disabled={!commentText.trim() || isSubmittingComment}>
+              <Button 
+                type="submit" 
+                variant="primary" 
+                size="sm" 
+                disabled={!commentText.trim() || isSubmittingComment}
+                className="min-h-[44px] sm:min-h-[36px] px-4 w-full sm:w-auto flex items-center justify-center gap-1.5 font-semibold shrink-0"
+              >
                 <Send size={13} />
+                <span>Post Note</span>
               </Button>
             </form>
           </Panel>

@@ -1,6 +1,7 @@
 import { Menu, User, LogOut } from "lucide-react";
 import ThemeToggle from "../ui/ThemeToggle.jsx";
 import NotificationBell from "../NotificationBell.jsx";
+import { CivicEmblem } from "../CivicLogo.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -22,13 +23,18 @@ export default function TopBar({ onMenuClick }) {
 
   return (
     <header className="sticky top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-border bg-card px-4 shadow-sm md:px-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2.5">
         <button
           onClick={onMenuClick}
-          className="rounded p-2 text-ink-secondary hover:bg-hover hover:text-ink md:hidden"
+          aria-label="Open navigation sidebar"
+          className="rounded-lg p-2 text-ink-secondary hover:bg-surface hover:text-ink md:hidden"
         >
           <Menu size={20} />
         </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <CivicEmblem className="w-5 h-5 text-brand" />
+          <span className="font-serif font-bold text-sm tracking-tight text-ink">CivicPortal</span>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <NotificationBell />

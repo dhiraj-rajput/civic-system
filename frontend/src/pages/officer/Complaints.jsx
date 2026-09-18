@@ -59,6 +59,19 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
   
   const Icon = CATEGORY_ICONS[complaint.category] || CATEGORY_ICONS['other'] || MoreHorizontal;
 
+  const handleStartTask = async (e) => {
+    e.stopPropagation();
+    setIsUpdating(true);
+    try {
+      await onStatusChange(complaint.id, 'In Progress');
+      toast.success('Task started! Status updated to In Progress');
+    } catch (err) {
+      toast.error('Failed to start task');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleStatusSelect = async (e) => {
     e.stopPropagation();
     const newStatus = e.target.value;
@@ -139,10 +152,10 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 transition-colors shrink-0"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold min-h-[32px] sm:min-h-0 px-2.5 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 transition-colors shrink-0"
                 title="Open GPS Navigation in Google Maps"
               >
-                <Navigation size={11} />
+                <Navigation size={12} />
                 Navigate
               </a>
             )}
@@ -161,16 +174,16 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
       {/* Footer / Quick Actions */}
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="px-4 py-3 sm:px-5 border-t border-border bg-surface-muted/20 flex flex-wrap items-center justify-between gap-3 text-xs"
+        className="px-4 py-3 sm:px-5 border-t border-border bg-surface-muted/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs"
       >
-        <div className="flex items-center gap-2">
-          <label className="text-ink-muted font-medium">Quick Status:</label>
-          <div className="relative">
+        <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+          <label className="text-ink-muted font-medium shrink-0">Quick Status:</label>
+          <div className="relative flex-1 sm:flex-initial">
             <select
               value={complaint.status}
               onChange={handleStatusSelect}
               disabled={isUpdating}
-              className="appearance-none bg-card border border-border text-xs font-medium text-ink rounded-md pl-2.5 pr-7 py-1 focus:border-brand focus:ring-1 focus:ring-brand disabled:opacity-50 cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] appearance-none bg-card border border-border text-xs font-medium text-ink rounded-lg pl-3 pr-8 py-2 focus:border-brand focus:ring-1 focus:ring-brand disabled:opacity-50 cursor-pointer"
             >
               <option value="New" disabled>New</option>
               <option value="Assigned">Assigned</option>
@@ -179,20 +192,32 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
               <option value="Closed">Closed</option>
               <option value="Reopened">Reopened</option>
             </select>
-            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          {complaint.status === 'Assigned' && (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={isUpdating}
+              onClick={handleStartTask}
+              className="min-h-[44px] sm:min-h-[36px] text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-1.5 px-3.5 w-full sm:w-auto shadow-sm"
+            >
+              ▶ Start Task
+            </Button>
+          )}
           {complaint.status !== 'Resolved' && complaint.status !== 'Closed' && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenResolve(complaint)}
-              className="text-xs border-success/40 text-success hover:bg-success/10 flex items-center gap-1.5 py-1 h-auto"
+              className="min-h-[44px] sm:min-h-[36px] text-xs border-success/40 text-success hover:bg-success/10 flex items-center justify-center gap-1.5 px-3.5 w-full sm:w-auto"
             >
-              <CheckSquare size={13} /> Resolve Issue
+              <CheckSquare size={14} /> Resolve Issue
             </Button>
           )}
           <Button
@@ -200,7 +225,7 @@ function OfficerComplaintCard({ complaint, onStatusChange, onOpenResolve }) {
             variant="ghost"
             size="sm"
             onClick={() => navigate(`/officer/complaints/${complaint.id}`)}
-            className="text-xs text-brand hover:bg-brand/10 py-1 h-auto"
+            className="min-h-[44px] sm:min-h-[36px] text-xs text-brand hover:bg-brand/10 flex items-center justify-center gap-1 px-3 w-full sm:w-auto"
           >
             Full View →
           </Button>
@@ -282,15 +307,15 @@ export default function OfficerComplaints() {
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Status Filter</label>
-            <div className="flex flex-wrap items-center gap-1 bg-surface-muted p-1 rounded-lg border border-border">
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="space-y-1.5 flex-1 sm:flex-initial">
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider block">Status Filter</label>
+            <div className="flex flex-wrap items-center gap-1.5 bg-surface-muted p-1.5 rounded-lg border border-border">
               {FILTERS.map(f => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  className={`min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center ${
                     activeFilter === f ? 'bg-card text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
                   }`}
                 >
@@ -301,12 +326,12 @@ export default function OfficerComplaints() {
           </div>
           
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Sort By</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wider block">Sort By</label>
             <div className="relative">
               <select 
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-card border border-border text-sm font-medium text-ink rounded-lg pl-3 pr-8 py-2 w-full sm:w-32 focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer shadow-sm"
+                className="appearance-none bg-card border border-border text-xs sm:text-sm font-medium text-ink rounded-lg pl-3 pr-8 py-2 min-h-[44px] sm:min-h-[36px] w-full sm:w-36 focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer shadow-sm"
               >
                 {SORTS.map(s => (
                   <option key={s} value={s}>{s}</option>

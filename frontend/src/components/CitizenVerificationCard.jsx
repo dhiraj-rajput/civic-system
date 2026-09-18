@@ -70,24 +70,24 @@ export default function CitizenVerificationCard({
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {evidence.before_image_url && (
               <div>
-                <span className="text-[10px] font-semibold text-ink-muted block mb-1">Before:</span>
+                <span className="text-[11px] font-bold text-ink-muted block mb-1 uppercase tracking-wide">Before Repair:</span>
                 <img
                   src={evidence.before_image_url}
                   alt="Before repair"
-                  className="h-28 w-full object-cover rounded border border-border"
+                  className="h-44 sm:h-32 w-full object-cover rounded-lg border border-border shadow-sm"
                 />
               </div>
             )}
             {evidence.after_image_url && (
               <div>
-                <span className="text-[10px] font-semibold text-success block mb-1">After (Resolution Proof):</span>
+                <span className="text-[11px] font-bold text-success block mb-1 uppercase tracking-wide">After Repair (Resolution Proof):</span>
                 <img
                   src={evidence.after_image_url}
                   alt="After repair proof"
-                  className="h-28 w-full object-cover rounded border border-border"
+                  className="h-44 sm:h-32 w-full object-cover rounded-lg border border-border shadow-sm"
                 />
               </div>
             )}
@@ -101,8 +101,8 @@ export default function CitizenVerificationCard({
           Is this issue actually fixed?
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg bg-surface-input border border-border/60">
-          <span className="text-xs font-semibold text-ink-secondary">
+        <div className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg bg-surface-input border border-border/60">
+          <span className="text-xs font-semibold text-ink-secondary text-center">
             Rate the quality of the municipal resolution:
           </span>
           <StarRating value={rating} onChange={setRating} size={24} />
@@ -114,25 +114,25 @@ export default function CitizenVerificationCard({
               Please explain why the issue is not fixed:
             </label>
             <textarea
-              rows={2}
+              rows={3}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="e.g., Pothole was only partially filled, still bumpy for cars..."
-              className="w-full rounded-md border border-border bg-surface-input p-2.5 text-xs text-ink focus:border-brand focus:outline-none"
+              className="w-full min-h-[44px] rounded-md border border-border bg-surface-input p-3 text-xs sm:text-sm text-ink focus:border-brand focus:outline-none"
             />
           </div>
         )}
 
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
             type="button"
             variant="primary"
             size="sm"
             disabled={isSubmitting}
             onClick={() => handleVerify("yes")}
-            className="flex-1 sm:flex-initial sm:px-6 bg-success hover:bg-success/90 text-white"
+            className="min-h-[44px] flex-1 sm:flex-initial sm:px-6 bg-success hover:bg-success/90 text-white font-semibold flex items-center justify-center gap-1.5"
           >
-            <CheckCircle2 size={15} /> Yes, Close Case
+            <CheckCircle2 size={16} /> Yes, Close Case
           </Button>
 
           <Button
@@ -141,9 +141,9 @@ export default function CitizenVerificationCard({
             size="sm"
             disabled={isSubmitting}
             onClick={() => handleVerify("no")}
-            className="flex-1 sm:flex-initial sm:px-6 border-danger text-danger hover:bg-danger/10"
+            className="min-h-[44px] flex-1 sm:flex-initial sm:px-6 border-danger text-danger hover:bg-danger/10 font-semibold flex items-center justify-center gap-1.5"
           >
-            <RotateCcw size={15} /> {showFeedbackInput ? "Confirm Reopen" : "No, Reopen Issue"}
+            <RotateCcw size={16} /> {showFeedbackInput ? "Confirm Reopen" : "No, Reopen Issue"}
           </Button>
         </div>
       </div>

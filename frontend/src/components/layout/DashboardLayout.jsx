@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar.jsx";
 import TopBar from "./TopBar.jsx";
+import BottomNav from "./BottomNav.jsx";
 
 export default function DashboardLayout({ children }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -43,12 +44,15 @@ export default function DashboardLayout({ children }) {
         style={typeof window !== 'undefined' && window.innerWidth >= 768 ? mainPadding : {}}
       >
         <TopBar onMenuClick={toggleMobile} />
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
           <div className="mx-auto max-w-6xl">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Mobile Persistent Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 }

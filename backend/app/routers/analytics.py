@@ -444,6 +444,7 @@ async def heatmap(
     status_filter: Optional[str] = Query(None, alias="status"),
     days: Optional[int] = Query(None),
     recurring_only: bool = Query(False),
+    borough: Optional[str] = Query(None),
 ):
     """Returns granular complaint points for the interactive Civic Heatmap with multi-parameter filtering."""
     db = get_db()
@@ -460,6 +461,11 @@ async def heatmap(
     if days:
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         query["created_at"] = {"$gte": cutoff}
+    if borough and borough not in ("All", "All Boroughs"):
+        query["$or"] = [
+            {"borough": {"$regex": f"^{borough}", "$options": "i"}},
+            {"address_text": {"$regex": borough, "$options": "i"}},
+        ]
 
     projection = {
         "location": 1,
@@ -468,6 +474,7 @@ async def heatmap(
         "priority_score": 1,
         "priority_label": 1,
         "status": 1,
+        "borough": 1,
         "address_text": 1,
         "is_duplicate": 1,
         "duplicate_group_id": 1,

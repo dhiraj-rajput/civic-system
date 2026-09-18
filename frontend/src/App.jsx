@@ -8,6 +8,7 @@ import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import BootstrapAdmin from "./pages/BootstrapAdmin.jsx";
+import PublicTrack from "./pages/PublicTrack.jsx";
 
 import CitizenDashboard from "./pages/citizen/Dashboard.jsx";
 import CitizenSubmit from "./pages/citizen/Submit.jsx";
@@ -31,6 +32,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/bootstrap-admin" element={<BootstrapAdmin />} />
+          <Route path="/track" element={<PublicTrack />} />
+          <Route path="/track/:id" element={<PublicTrack />} />
 
           {/* Authenticated Routes with Dashboard Layout */}
           <Route path="/citizen/*" element={

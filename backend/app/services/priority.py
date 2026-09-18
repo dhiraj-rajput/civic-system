@@ -226,6 +226,7 @@ async def score_complaint(
         "cluster_factor": round(cluster_score * W_CLUSTER * 100, 1),
         "safety_factor": round((safety_boost - 1.0) * 100, 1),
         "sla_urgency": round(sla_urgency_pts, 1),
+        "sla_multiplier": sla_boost,
         "summary": f"Calculated based on {cluster_count} similar complaints nearby, category severity ({doc.get('category')}), and age of {round(age_hours, 1)}h."
     }
 
