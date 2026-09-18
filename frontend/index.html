@@ -2,11 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link id="app-favicon" rel="icon" type="image/svg+xml" href="/favicon-light.svg" />
     <script>
       (function(){
         var t = localStorage.getItem('civic_theme');
         var isDark = t === 'dark';
-        if (isDark) document.documentElement.classList.add('dark');
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          var fav = document.getElementById('app-favicon');
+          if (fav) fav.href = '/favicon-dark.svg';
+        }
       })();
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -14,7 +19,6 @@
         });
       }
     </script>
-    <link id="app-favicon" rel="icon" type="image/svg+xml" href="/favicon-light.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Civic Complaint Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
